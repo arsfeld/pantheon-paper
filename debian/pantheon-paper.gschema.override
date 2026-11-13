@@ -1,0 +1,28 @@
+# The keys pantheon-paper takes from Pantheon, as system defaults (a value in
+# a user's own dconf still wins). Override files apply in name order, so this
+# one comes after elementary's default-settings.gschema.override, and its
+# :Pantheon sections replace elementary's. The same changes as
+# modules/desktop/pantheon-paper.nix in arsfeld/nixos, which makes them
+# through dconf; tools/keys-check.py checks the result.
+
+# Super+Left/Right switched workspaces: that moves to Ctrl+Super+Left/Right,
+# which was half-screen tiling. Strips replace tiling, so it is cleared and
+# edge tiling is off.
+[org.gnome.desktop.wm.keybindings:Pantheon]
+switch-to-workspace-left=['<Control><Super>Left']
+switch-to-workspace-right=['<Control><Super>Right']
+move-to-monitor-left=@as []
+move-to-monitor-right=@as []
+move-to-monitor-up=@as []
+move-to-monitor-down=@as []
+
+[org.gnome.mutter.keybindings:Pantheon]
+toggle-tiled-left=@as []
+toggle-tiled-right=@as []
+
+[org.gnome.mutter:Pantheon]
+edge-tiling=false
+
+# Super+Down also opened the multitasking view; it keeps Super+S.
+[io.elementary.desktop.wm.keybindings:Pantheon]
+toggle-multitasking-view=['<Super>s']

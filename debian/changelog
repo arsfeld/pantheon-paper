@@ -1,0 +1,6 @@
+pantheon-paper (0.1.0) noble; urgency=medium
+
+  * Placeholder: ci/build-deb.sh writes the real entry
+    (0.1.0+git<date>.<sha>) before each build.
+
+ -- Alexandre Rosenfeld <alex@rosenfeld.one>  Fri, 13 Nov 2026 00:00:00 +0000

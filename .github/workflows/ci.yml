@@ -1,0 +1,56 @@
+# Builds, tests and packages on every push and pull request in elementary OS 8,
+# then installs the .deb there and checks it (ci/check-install.sh). A push to
+# master also publishes the .deb as a GitHub Release, which
+# arsfeld/pantheon-apt picks up into the apt repo.
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    # elementary OS 8 (circe). Not :stable, which will move to the next
+    # release and its different gala and mutter.
+    container: ghcr.io/elementary/docker:circe-stable
+    steps:
+      # Before checkout: without git in the container, actions/checkout
+      # downloads a tarball and the build cannot read the commit.
+      - name: Install git
+        run: apt-get update -qq && apt-get install -y -qq git ca-certificates
+      - uses: actions/checkout@v7
+      - name: Trust the checkout
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+      - name: Build, test and package
+        run: ci/build-deb.sh
+      - name: Install and check
+        run: ci/check-install.sh
+      - uses: actions/upload-artifact@v7
+        with:
+          name: deb
+          path: dist/
+
+  release:
+    needs: build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: deb
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version=$(cat VERSION)
+          gh release create "deb/$version" ./*.deb \
+            --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
+            --title "$version" \
+            --notes "Debian package for elementary OS 8 (noble, amd64), built from $GITHUB_SHA. Install it from the apt repo: https://arsfeld.github.io/pantheon-apt"
