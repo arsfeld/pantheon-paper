@@ -3,4 +3,5 @@ plugin_sources += files(
     'Controller.vala',
     'Applier.vala',
     'Demo.vala',
+    'Actions.vala',
 )

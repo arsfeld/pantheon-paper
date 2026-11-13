@@ -6,7 +6,9 @@ namespace Paper {
      * `paper-demo: step <i> <name>`, and once the step has settled
      * `paper-demo: at <i> <name> <layout>`. With PAPER_DEMO_WAIT=1 a step waits
      * for /tmp/paper-demo.next to appear (and deletes it), so a screenshot can
-     * be taken at each one; otherwise steps are 2 s apart. Never injects input.
+     * be taken at each one; otherwise steps are 2 s apart. With
+     * PAPER_DEMO_KEYS=1 the steps are the keybinding actions instead, run by
+     * name through Actions. Never injects input.
      */
     public class Demo : Object {
         public delegate void Step ();
@@ -24,20 +26,34 @@ namespace Paper {
         private const string NEXT = "/tmp/paper-demo.next";
 
         private Controller c;
+        private Actions actions;
         private Meta.Display display;
         private Gee.ArrayList<Entry> steps = new Gee.ArrayList<Entry> ();
         private int index = 0;
         private int count;
         private bool wait_for_file;
 
-        public Demo (Controller c, Meta.Display display, int count) {
+        public Demo (Controller c, Actions actions, Meta.Display display, int count) {
             this.c = c;
+            this.actions = actions;
             this.display = display;
             this.count = count;
             wait_for_file = Environment.get_variable ("PAPER_DEMO_WAIT") == "1";
             FileUtils.remove (NEXT);
 
             add ("open", () => {});
+            if (Environment.get_variable ("PAPER_DEMO_KEYS") == "1") {
+                foreach (var name in new string[] {
+                    "focus-left", "cycle-width", "cycle-width", "cycle-width", "toggle-full", "toggle-full",
+                    "slurp", "focus-down", "focus-up", "move-down", "barf", "move-left", "move-right",
+                    "focus-left", "center", "toggle-float", "toggle-float",
+                }) {
+                    var action = name;
+                    add (action, () => this.actions.run (action));
+                }
+                add ("settle", () => {});
+                return;
+            }
             add ("focus-left", () => focus_column (-1));
             add ("focus-left", () => focus_column (-1));
             add ("maximize", () => focused ()?.maximize (Meta.MaximizeFlags.BOTH));

@@ -18,12 +18,16 @@ Built against Gala 8.6 and Mutter 48. Packaged and configured for NixOS in
 | Super+Shift+←/→ | Move the column |
 | Super+Shift+↑/↓ | Move the window within its column |
 | Super+R | Cycle width 1/3 → 1/2 → 2/3 |
-| Super+F | Toggle full width |
-| Super+I / Super+O | Slurp / barf |
+| Super+M | Toggle full width |
+| Super+I / Super+U | Slurp / barf |
 | Super+C | Centre the focused column |
 | Super+Shift+F | Toggle floating |
 
-Bindings live in `io.github.arsfeld.paper.keybindings`.
+Bindings live in `io.github.arsfeld.paper.keybindings`. Several collide with
+Pantheon's defaults (Super+←/→ half-tiling, Super+↑/↓ maximize and the
+multitasking view, Super+Shift+arrows move-to-monitor); the NixOS module clears
+those. Toggle-full and barf avoid Super+F (picture-in-picture) and Super+O
+(rotation lock) instead.
 
 ## Build and test
 
