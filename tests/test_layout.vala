@@ -54,16 +54,16 @@ void main (string[] args) {
 
     Test.add_func ("/layout/parks_far_right", () => {
         var r = layout (strip_of (4), WORK, new NoHints ());
-        assert (at (r, 3).parked && at (r, 3).rect.x == 1910 && at (r, 3).rect.width == 952);
-        assert (at (r, 4).parked && at (r, 4).rect.x == 1910);
+        assert (at (r, 3).parked && at (r, 3).rect.x == 1845 && at (r, 3).rect.width == 952);
+        assert (at (r, 4).parked && at (r, 4).rect.x == 1845);
     });
 
     Test.add_func ("/layout/parks_far_left", () => {
         var s = strip_of (4);
         s.scroll_x = 2880;
         var r = layout (s, WORK, new NoHints ());
-        assert (at (r, 1).parked && at (r, 1).rect.x == 10 - 952);
-        assert (at (r, 3).parked && at (r, 3).rect.x == 10 - 952); // only 8 px would show
+        assert (at (r, 1).parked && at (r, 1).rect.x == 75 - 952);
+        assert (at (r, 3).parked && at (r, 3).rect.x == 75 - 952); // only 8 px would show
         assert (!at (r, 4).parked && at (r, 4).rect.x == 0);
     });
 
@@ -87,7 +87,7 @@ void main (string[] args) {
         s.toggle_full ();
         var r = layout (s, WORK, new NoHints ());
         assert (at (r, 1).rect.width == 1920 && r.columns[0].x == 0);
-        assert (at (r, 2).parked && at (r, 2).rect.x == 1910); // natural x 1928 is off screen
+        assert (at (r, 2).parked && at (r, 2).rect.x == 1845); // natural x 1928 is off screen
     });
 
     Test.add_func ("/layout/free_width_used", () => {

@@ -107,6 +107,15 @@ namespace Paper {
             focused = id;
         }
 
+        /** Insert as a new column at index `column` (clamped), and focus it. */
+        public void insert_at (uint64 id, int column) {
+            if (id == 0 || contains (id)) {
+                return;
+            }
+            columns.insert (column.clamp (0, columns.size), new Column.with (id));
+            focused = id;
+        }
+
         public void append (uint64 id) {
             if (id == 0 || contains (id)) {
                 return;

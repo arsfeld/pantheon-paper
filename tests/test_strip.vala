@@ -233,5 +233,16 @@ void main (string[] args) {
         assert (order (t) == "1,2|3");
     });
 
+    Test.add_func ("/strip/insert_at_restores_slot", () => {
+        var s = strip_of (3);
+        s.focus (1);
+        s.insert_at (4, 1);
+        assert (order (s) == "1|4|2|3" && s.focused == 4);
+        s.insert_at (5, 99);
+        assert (order (s) == "1|4|2|3|5");
+        s.insert_at (4, 0);
+        assert (order (s) == "1|4|2|3|5");
+    });
+
     Test.run ();
 }
