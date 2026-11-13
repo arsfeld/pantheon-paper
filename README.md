@@ -10,7 +10,7 @@ The few calls that differ between them are in `src/Compat.vala`.
 
 ## Install
 
-On elementary OS 8, from the [pantheon-apt](https://arsfeld.github.io/pantheon-apt)
+On elementary OS 8, from the [pantheon-extras](https://arsfeld.github.io/pantheon-extras)
 repository (set it up as its page says), then log out and back in:
 
 ```
@@ -58,7 +58,7 @@ CI (`.github/workflows/ci.yml`) builds the `.deb` in elementary OS 8
 (`ci/build-deb.sh`), installs it there and checks it, including that
 elementary's own gala loads the plugin and keeps running
 (`ci/check-install.sh`). Each push to master publishes the `.deb` as a GitHub
-Release, which pantheon-apt picks up within the hour. To run the same locally:
+Release, which pantheon-extras picks up within the hour. To run the same locally:
 
 ```
 docker run --rm -v "$PWD:/src" -w /src ghcr.io/elementary/docker:circe-stable \
