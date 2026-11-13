@@ -59,6 +59,7 @@ if mutter_deps.length() > 0
         dependencies: core_deps + mutter_deps + [
             dependency('gala'),
             dependency('gio-2.0'),
+            dependency('gio-unix-2.0'),
             dependency('gdk-pixbuf-2.0'),
             dependency('pango'),
             dependency('cairo-gobject'),
@@ -69,7 +70,7 @@ if mutter_deps.length() > 0
         install_dir: get_option('prefix') / get_option('libdir') / 'gala' / 'plugins',
     )
 else
-    warning('No Mutter 48 (libmutter-16) found: building and testing the core only.')
+    error('No supported mutter found: need mutter 48 (libmutter-16).')
 endif
 
 install_data(
