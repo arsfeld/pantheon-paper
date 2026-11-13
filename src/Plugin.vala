@@ -2,6 +2,7 @@ namespace Paper {
     public class Plugin : Gala.Plugin {
         private Controller? controller = null;
         private Keys? keys = null;
+        private Mouse? mouse = null;
         private Demo? demo = null;
 
         public override void initialize (Gala.WindowManager wm) {
@@ -10,10 +11,11 @@ namespace Paper {
             controller = new Controller (wm);
             var actions = new Actions (controller, display);
             keys = new Keys (display, actions);
+            mouse = new Mouse (wm, controller);
 
             var n = int.parse (Environment.get_variable ("PAPER_DEMO") ?? "0");
             if (n > 0) {
-                demo = new Demo (controller, actions, display, n);
+                demo = new Demo (controller, actions, mouse, display, n);
                 demo.start ();
             }
         }
@@ -22,6 +24,10 @@ namespace Paper {
             if (keys != null) {
                 keys.destroy ();
                 keys = null;
+            }
+            if (mouse != null) {
+                mouse.destroy ();
+                mouse = null;
             }
             if (controller != null) {
                 controller.destroy ();

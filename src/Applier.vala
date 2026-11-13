@@ -14,7 +14,7 @@ namespace Paper {
         public void apply (LayoutResult result, bool animate) {
             foreach (var p in result.windows) {
                 var w = controller.window_for (p.id);
-                if (w == null) {
+                if (w == null || p.id == controller.grabbed) {
                     continue;
                 }
                 var f = w.get_frame_rect ();

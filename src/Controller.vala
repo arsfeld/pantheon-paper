@@ -69,6 +69,8 @@ namespace Paper {
         private Applier applier;
         private Settings interface_settings;
         public bool applying { get; private set; default = false; }
+        /** A window the user is moving or resizing: layouts leave it where the pointer has it. */
+        public uint64 grabbed { get; set; default = 0; }
 
         public Controller (Gala.WindowManager wm) {
             Object (wm: wm);

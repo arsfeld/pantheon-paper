@@ -4,4 +4,5 @@ plugin_sources += files(
     'Applier.vala',
     'Demo.vala',
     'Actions.vala',
+    'Mouse.vala',
 )

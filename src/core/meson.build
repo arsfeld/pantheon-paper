@@ -3,4 +3,5 @@ core_sources += files(
     'Strip.vala',
     'Layout.vala',
     'Tiling.vala',
+    'Drop.vala',
 )
