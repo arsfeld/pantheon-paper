@@ -22,11 +22,19 @@ namespace Paper {
                     || (event.get_state () & display.compositor_modifiers) == 0) {
                     return Clutter.EVENT_PROPAGATE;
                 }
+                // Clutter delivers each wheel click twice, as a discrete step and
+                // as an emulated smooth one (or the reverse): act on the real one
+                // and swallow its echo, so one click pans once.
+                if ((event.get_flags () & Clutter.EventFlags.FLAG_POINTER_EMULATED) != 0) {
+                    return mouse.has_strip () ? Clutter.EVENT_STOP : Clutter.EVENT_PROPAGATE;
+                }
                 switch (event.get_scroll_direction ()) {
                     case Clutter.ScrollDirection.SMOOTH:
                         double dx, dy;
                         event.get_scroll_delta (out dx, out dy);
-                        return mouse.pan_by ((int) Math.round ((dx != 0 ? dx : dy) * SMOOTH_PX), false);
+                        // A wheel's smooth unit is one detent; a touchpad's is a fraction of its motion.
+                        int scale = event.get_scroll_source () == Clutter.ScrollSource.WHEEL ? STEP_PX : SMOOTH_PX;
+                        return mouse.pan_by ((int) Math.round ((dx != 0 ? dx : dy) * scale), false);
                     case Clutter.ScrollDirection.LEFT:
                     case Clutter.ScrollDirection.UP:
                         return mouse.pan_by (-STEP_PX, true);
@@ -65,12 +73,17 @@ namespace Paper {
             stop_tracking ();
         }
 
+        public bool has_strip () {
+            var s = c.current_strip ();
+            return s != null && s.columns.size > 0;
+        }
+
         /** Pan the visible strip; STOP only when there was a strip to pan. */
         public bool pan_by (int dx, bool animate) {
-            var s = c.current_strip ();
-            if (s == null || s.columns.size == 0) {
+            if (!has_strip ()) {
                 return Clutter.EVENT_PROPAGATE;
             }
+            var s = c.current_strip ();
             pan (s, dx, c.work_area (), c.hints ());
             c.relayout (animate);
             return Clutter.EVENT_STOP;

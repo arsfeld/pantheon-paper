@@ -10,7 +10,8 @@ namespace Paper {
      * PAPER_DEMO_KEYS=1 the steps are the keybinding actions instead, run by
      * name through Actions; with PAPER_DEMO_MOUSE=1 they are drops, a pan and
      * a resize, run through Mouse's end-of-grab handlers with computed
-     * coordinates. Never injects input.
+     * coordinates; with PAPER_DEMO_IDLE=1 there are only settle steps, for
+     * input injected from outside by tests/inject.py. Never injects input.
      */
     public class Demo : Object {
         public delegate void Step ();
@@ -46,6 +47,13 @@ namespace Paper {
             FileUtils.remove (NEXT);
 
             add ("open", () => {});
+            if (Environment.get_variable ("PAPER_DEMO_IDLE") == "1") {
+                // Only settle steps: for input injected from outside (tests/inject.py).
+                for (int i = 0; i < 8; i++) {
+                    add ("settle", () => {});
+                }
+                return;
+            }
             if (Environment.get_variable ("PAPER_DEMO_MOUSE") == "1") {
                 // Windows are found by title: "demo <n>".
                 add ("drop-into", () => {
