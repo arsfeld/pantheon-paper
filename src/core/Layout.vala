@@ -56,16 +56,32 @@ namespace Paper {
         return left + width;
     }
 
-    public LayoutResult layout (Strip s, Rect work, WidthHints hints) {
+    /**
+     * wall_left / wall_right: another monitor adjoins the work area on that
+     * side. A column crossing such an edge would sit mostly on that monitor,
+     * and Mutter would take it off the primary's workspace (with
+     * workspaces-only-on-primary it becomes sticky), so it is parked inside
+     * the edge instead, flush with it, for the applier to lower beneath the
+     * visible columns.
+     */
+    public LayoutResult layout (Strip s, Rect work, WidthHints hints, bool wall_left = false, bool wall_right = false) {
         var result = new LayoutResult ();
         int left = 0;
         foreach (var col in s.columns) {
             int w = column_width (col, work, hints);
             int x = work.x + left - s.scroll_x;
-            int visible = int.min (x + w, work.x + work.width) - int.max (x, work.x);
-            bool parked = visible < SLIVER;
-            if (parked) {
-                x = x >= work.x ? work.x + work.width - SLIVER : work.x + SLIVER - w;
+            int right = work.x + work.width;
+            int visible = int.min (x + w, right) - int.max (x, work.x);
+            bool parked = false;
+            if (wall_right && x + w > right && x > work.x) {
+                x = right - w;
+                parked = true;
+            } else if (wall_left && x < work.x && x + w < right) {
+                x = work.x;
+                parked = true;
+            } else if (visible < SLIVER) {
+                x = x >= work.x ? right - SLIVER : work.x + SLIVER - w;
+                parked = true;
             }
             result.columns.add (Rect (x, work.y, w, work.height));
 

@@ -62,6 +62,8 @@ namespace Paper {
         private Gee.HashMap<uint64?, int64?> asked_at = new Gee.HashMap<uint64?, int64?> (id_hash, id_equal);
         /** The unhinted width that request was for: a hint needs the client to have refused this very width. */
         private Gee.HashMap<uint64?, int> asked_width = new Gee.HashMap<uint64?, int> (id_hash, id_equal);
+        /** The exact size last asked for (hints included), to tell an answer from a pending request. */
+        private Gee.HashMap<uint64?, Rect?> asked_size = new Gee.HashMap<uint64?, Rect?> (id_hash, id_equal);
         private const int64 RESIZE_GRACE = 1000000;
         private uint recheck_source = 0;
         private Gee.ArrayList<ulong> display_handlers = new Gee.ArrayList<ulong> ();
@@ -256,6 +258,7 @@ namespace Paper {
             last_width.unset (id);
             asked_at.unset (id);
             asked_width.unset (id);
+            asked_size.unset (id);
             relayout ();
         }
 
@@ -306,6 +309,7 @@ namespace Paper {
                 current.remove (id);
             }
             if (target != null) {
+                asked_size.unset (id);
                 if (slots.has_key (id) && slots[id].workspace == ws) {
                     var slot = slots[id];
                     target.insert_at (id, slot.column);
@@ -378,6 +382,10 @@ namespace Paper {
             if (applying) {
                 return;
             }
+            // A size the window took by itself (its answer, or a fullscreen or
+            // maximize round trip) voids a settled answer: ask again once. An
+            // answer that repeats does not change the frame, so it settles.
+            asked_size.unset (id);
             int width = w.get_frame_rect ().width;
             if (last_width.has_key (id) && last_width[id] == width) {
                 return;
@@ -401,6 +409,30 @@ namespace Paper {
             }
         }
 
+        /** The visible workspace's strip laid out as it is on screen (hints and monitor walls included). */
+        public LayoutResult layout_of (Strip s) {
+            bool wall_left, wall_right;
+            walls (out wall_left, out wall_right);
+            return layout (s, work_area (), this, wall_left, wall_right);
+        }
+
+        /** Whether another monitor adjoins the primary on its left or right edge. */
+        public void walls (out bool left, out bool right) {
+            left = false;
+            right = false;
+            int primary = display.get_primary_monitor ();
+            var p = display.get_monitor_geometry (primary);
+            for (int i = 0; i < display.get_n_monitors (); i++) {
+                if (i == primary) {
+                    continue;
+                }
+                var m = display.get_monitor_geometry (i);
+                bool overlaps = m.y < p.y + p.height && p.y < m.y + m.height;
+                left = left || (overlaps && m.x + m.width == p.x);
+                right = right || (overlaps && m.x == p.x + p.width);
+            }
+        }
+
         /** Lay out every strip; only the visible workspace animates. */
         public void relayout (bool animate = true) {
             if (applying) {
@@ -414,18 +446,37 @@ namespace Paper {
                     continue;
                 }
                 var work = work_area_of (entry.key);
-                var plain = layout (strip, work, new NoHints ());
+                bool wall_left, wall_right;
+                walls (out wall_left, out wall_right);
+                var plain = layout (strip, work, new NoHints (), wall_left, wall_right);
                 foreach (var p in plain.windows) {
                     requested[p.id] = p.rect.width;
                 }
-                var result = layout (strip, work, this);
+                var result = layout (strip, work, this, wall_left, wall_right);
                 applier.apply (result, animate && entry.key == active && animations_enabled ());
             }
             applying = false;
         }
 
+        /**
+         * Whether the window was already asked for exactly this size, long enough
+         * ago that its frame is its answer. A client that keeps a different size
+         * (not resizable, size increments, a minimum height) is then left at it:
+         * asking again would only repeat every recheck, forever.
+         */
+        public bool size_settled (uint64 id, int width, int height) {
+            if (!asked_size.has_key (id) || !asked_at.has_key (id)) {
+                return false;
+            }
+            var a = asked_size[id];
+            return a.width == width && a.height == height
+                && GLib.get_monotonic_time () - asked_at[id] >= RESIZE_GRACE;
+        }
+
         /** Mark a window as asked to resize, and look again once the grace period is over. */
-        public void resize_requested (uint64 id) {
+        public void resize_requested (uint64 id, int width, int height) {
+            debug ("resize request %s", ((uint64) id).to_string ());
+            asked_size[id] = Rect (0, 0, width, height);
             asked_at[id] = GLib.get_monotonic_time ();
             if (requested.has_key (id)) {
                 asked_width[id] = requested[id];

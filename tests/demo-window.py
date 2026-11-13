@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """A plain GTK 3 window for the PAPER_DEMO hook: titled `demo <n>`, with a big
 number and a colour per window, so screenshots show which window is where.
-With PAPER_DEMO_WIDE=<n>, window n refuses to be narrower than 1100 px."""
+With PAPER_DEMO_WIDE=<n>, window n refuses to be narrower than 1100 px; with
+PAPER_DEMO_FIXED=<n>, window n is not resizable."""
 import os
 import sys
 
@@ -25,6 +26,8 @@ label = Gtk.Label(label=n)
 if os.environ.get("PAPER_DEMO_WIDE") == n:
     label.set_size_request(1100, -1)
 win.add(label)
+if os.environ.get("PAPER_DEMO_FIXED") == n:
+    win.set_resizable(False)
 win.connect("destroy", Gtk.main_quit)
 win.show_all()
 Gtk.main()

@@ -184,7 +184,7 @@ namespace Paper {
 
         private Rect column_rect (int i) {
             var s = c.current_strip ();
-            var r = layout (s, c.work_area (), c.hints ());
+            var r = c.layout_of (s);
             return i < r.columns.size ? r.columns[i] : Rect (0, 0, 0, 0);
         }
 

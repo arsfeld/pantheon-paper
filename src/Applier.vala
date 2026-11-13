@@ -17,19 +17,35 @@ namespace Paper {
                 if (w == null || p.id == controller.grabbed) {
                     continue;
                 }
+                if (p.parked && w != w.get_display ().focus_window) {
+                    // Beneath the visible columns: a column parked inside an edge
+                    // that borders another monitor overlaps them.
+                    w.lower ();
+                }
                 var f = w.get_frame_rect ();
                 var r = p.rect;
                 if (f.x == r.x && f.y == r.y && f.width == r.width && f.height == r.height) {
                     continue;
                 }
                 bool move_only = f.width == r.width && f.height == r.height;
-                if (!move_only) {
-                    controller.resize_requested (p.id);
+                int width = r.width;
+                int height = r.height;
+                if (!move_only && controller.size_settled (p.id, r.width, r.height)) {
+                    // Asked before and answered with another size: keep the
+                    // client's size, only place it.
+                    if (f.x == r.x && f.y == r.y) {
+                        continue;
+                    }
+                    width = f.width;
+                    height = f.height;
+                    move_only = true;
+                } else if (!move_only) {
+                    controller.resize_requested (p.id, r.width, r.height);
                 }
                 // user_op: Mutter clamps non-user moves fully on screen, which
                 // would pull parked windows back in; a user op only has to stay
                 // partly visible (PaperWM moves windows the same way).
-                w.move_resize_frame (true, r.x, r.y, r.width, r.height);
+                w.move_resize_frame (true, r.x, r.y, width, height);
                 var actor = w.get_compositor_private () as Clutter.Actor;
                 if (actor == null) {
                     continue;

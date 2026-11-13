@@ -131,7 +131,7 @@ namespace Paper {
                 c.relayout ();
                 return;
             }
-            var target = hit_test (layout (s, c.work_area (), c.hints ()), s, id, x, y);
+            var target = hit_test (c.layout_of (s), s, id, x, y);
             s.move_to (id, target);
             s.focus (id);
             scroll_to_focus (s, c.work_area (), c.hints ());
@@ -148,7 +148,7 @@ namespace Paper {
             var frame = w.get_frame_rect ();
             var work = c.work_area ();
             var col = s.columns[s.column_of (id)];
-            var current = layout (s, work, c.hints ());
+            var current = c.layout_of (s);
             foreach (var p in current.windows) {
                 if (p.id == id && p.rect.width != frame.width) {
                     s.set_free_width (id, frame.width);
@@ -203,7 +203,7 @@ namespace Paper {
             Graphene.Point p;
             Clutter.ModifierType mods;
             display.get_context ().get_backend ().get_cursor_tracker ().get_pointer (out p, out mods);
-            var r = layout (s, c.work_area (), c.hints ());
+            var r = c.layout_of (s);
             var t = hit_test (r, s, id, (int) p.x, (int) p.y);
             if (t.kind == DropKind.NONE || display.get_current_monitor () != display.get_primary_monitor ()) {
                 indicator.visible = false;

@@ -75,6 +75,31 @@ void main (string[] args) {
         assert (!at (r, 3).parked && at (r, 3).rect.x == 1520);
     });
 
+    // Another monitor beyond an edge: nothing may cross it, or its majority
+    // lands on that monitor and Mutter takes it off the primary's workspace.
+    Test.add_func ("/layout/walled_right_parks_inside", () => {
+        var r = layout (strip_of (4), WORK, new NoHints (), false, true);
+        assert (!at (r, 2).parked && at (r, 2).rect.x == 960);
+        assert (at (r, 3).parked && at (r, 3).rect.x == 1920 - 952);
+        assert (at (r, 4).parked && at (r, 4).rect.x == 1920 - 952);
+    });
+
+    Test.add_func ("/layout/walled_right_straddling_parks_inside", () => {
+        var s = strip_of (3);
+        s.scroll_x = 400;
+        var r = layout (s, WORK, new NoHints (), false, true);
+        assert (at (r, 3).parked && at (r, 3).rect.x == 968);
+        assert (!at (r, 1).parked && at (r, 1).rect.x == -400); // the open left edge still straddles
+    });
+
+    Test.add_func ("/layout/walled_left_parks_inside", () => {
+        var s = strip_of (3);
+        s.scroll_x = 400;
+        var r = layout (s, WORK, new NoHints (), true, false);
+        assert (at (r, 1).parked && at (r, 1).rect.x == 0);
+        assert (!at (r, 3).parked && at (r, 3).rect.x == 1520);
+    });
+
     Test.add_func ("/layout/work_area_offset", () => {
         Rect work = { 100, 0, 1000, 800 };
         var r = layout (strip_of (1), work, new NoHints ());
