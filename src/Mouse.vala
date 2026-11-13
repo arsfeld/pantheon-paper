@@ -1,8 +1,9 @@
 namespace Paper {
     /**
-     * Pointer handling: Super+scroll pans the strip, dragging a tiled window
-     * drops it into a column or a new column, and resizing one sets its
-     * column's width or its share of the column height.
+     * Pointer handling: Super+scroll pans the strip; dragging a tiled window
+     * sideways pans it too (DragPan), and pulling the window out of the strip
+     * drops it into a column or a new column; resizing one sets its column's
+     * width or its share of the column height.
      */
     public class Mouse : Object {
         /** Pixels panned per discrete scroll step and per unit of smooth scroll. */
@@ -52,6 +53,8 @@ namespace Paper {
         private ulong begin_id;
         private ulong end_id;
         private uint track_source = 0;
+        /** The pointer move grab in progress; null for a keyboard move, which only drops. */
+        private DragPan? drag = null;
         private Clutter.Actor? indicator = null;
 
         public Mouse (Gala.WindowManager wm, Controller c) {
@@ -100,17 +103,29 @@ namespace Paper {
             }
             c.grabbed = w.get_id ();
             if (is_move (op)) {
+                var s = c.strip_of (w.get_id ());
+                if (op != Meta.GrabOp.KEYBOARD_MOVING) {
+                    Graphene.Point p;
+                    Clutter.ModifierType mods;
+                    display.get_context ().get_backend ().get_cursor_tracker ().get_pointer (out p, out mods);
+                    drag = new DragPan ((int) p.x, (int) p.y, s.scroll_x);
+                }
                 start_tracking (w.get_id ());
             }
         }
 
         private void on_grab_end (Meta.Window? w, Meta.GrabOp op) {
             stop_tracking ();
+            var panned = drag != null && !drag.detached;
+            drag = null;
             if (w == null || c.grabbed != w.get_id ()) {
                 return;
             }
             c.grabbed = 0;
-            if (is_move (op)) {
+            if (panned) {
+                // Never left the strip: back into its own slot, where the pan put it.
+                c.relayout ();
+            } else if (is_move (op)) {
                 Graphene.Point p;
                 Clutter.ModifierType mods;
                 display.get_context ().get_backend ().get_cursor_tracker ().get_pointer (out p, out mods);
@@ -203,6 +218,21 @@ namespace Paper {
             Graphene.Point p;
             Clutter.ModifierType mods;
             display.get_context ().get_backend ().get_cursor_tracker ().get_pointer (out p, out mods);
+            if (drag != null && !drag.detached) {
+                if (display.get_current_monitor () != display.get_primary_monitor ()) {
+                    drag.detach ();
+                } else {
+                    int before = s.scroll_x;
+                    drag.update (s, (int) p.x, (int) p.y, c.work_area (), c.hints ());
+                    if (s.scroll_x != before) {
+                        c.relayout (false);
+                    }
+                    if (!drag.detached) {
+                        indicator.visible = false;
+                        return;
+                    }
+                }
+            }
             var r = c.layout_of (s);
             var t = hit_test (r, s, id, (int) p.x, (int) p.y);
             if (t.kind == DropKind.NONE || display.get_current_monitor () != display.get_primary_monitor ()) {
