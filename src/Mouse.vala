@@ -107,7 +107,7 @@ namespace Paper {
                 if (op != Meta.GrabOp.KEYBOARD_MOVING) {
                     Graphene.Point p;
                     Clutter.ModifierType mods;
-                    display.get_context ().get_backend ().get_cursor_tracker ().get_pointer (out p, out mods);
+                    pointer (display, out p, out mods);
                     drag = new DragPan ((int) p.x, (int) p.y, s.scroll_x);
                 }
                 start_tracking (w.get_id ());
@@ -128,7 +128,7 @@ namespace Paper {
             } else if (is_move (op)) {
                 Graphene.Point p;
                 Clutter.ModifierType mods;
-                display.get_context ().get_backend ().get_cursor_tracker ().get_pointer (out p, out mods);
+                pointer (display, out p, out mods);
                 drop (w.get_id (), (int) p.x, (int) p.y);
             } else {
                 resized (w.get_id ());
@@ -188,7 +188,7 @@ namespace Paper {
         private void start_tracking (uint64 id) {
             stop_tracking ();
             indicator = new Clutter.Actor ();
-            indicator.background_color = Cogl.Color.from_4f (0.21f, 0.54f, 0.90f, 0.3f);
+            set_background (indicator, 0.21f, 0.54f, 0.90f, 0.3f);
             indicator.reactive = false;
             indicator.visible = false;
             wm.top_window_group.add_child (indicator);
@@ -217,7 +217,7 @@ namespace Paper {
             }
             Graphene.Point p;
             Clutter.ModifierType mods;
-            display.get_context ().get_backend ().get_cursor_tracker ().get_pointer (out p, out mods);
+            pointer (display, out p, out mods);
             if (drag != null && !drag.detached) {
                 if (display.get_current_monitor () != display.get_primary_monitor ()) {
                     drag.detach ();

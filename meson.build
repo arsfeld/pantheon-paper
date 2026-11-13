@@ -22,10 +22,11 @@ subdir('src/core')
 
 # The plugin must be built against the mutter gala itself uses. mutter does
 # not install Vala bindings; vapi/ carries the ones from gala's source tree
-# (tag 8.6.2), as arsfeld/pantheon-global-menu does. Only Mutter 48
-# (libmutter-16, what NixOS's gala uses) is supported.
+# (tag 8.6.2), as arsfeld/pantheon-global-menu does: Mutter 46 (libmutter-14,
+# elementary OS 8's gala) and Mutter 48 (libmutter-16, NixOS's gala).
 #   [API version, mutter release, vala defines gala's vapis guard on]
 supported_mutters = [
+    ['14', '46', []],
     ['16', '48', ['HAS_MUTTER47', 'HAS_MUTTER48']],
 ]
 mutter_deps = []
@@ -71,7 +72,7 @@ if mutter_deps.length() > 0
         install_dir: get_option('prefix') / get_option('libdir') / 'gala' / 'plugins',
     )
 else
-    error('No supported mutter found: need mutter 48 (libmutter-16).')
+    error('No supported mutter found: need mutter 46 (libmutter-14) or 48 (libmutter-16).')
 endif
 
 install_data(
