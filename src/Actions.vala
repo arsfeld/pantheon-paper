@@ -76,14 +76,24 @@ namespace Paper {
 
     /** Registers each action under its name in io.github.arsfeld.paper.keybindings. */
     public class Keys : Object {
+        private const string SCHEMA = "io.github.arsfeld.paper.keybindings";
+
         private unowned Meta.Display display;
         private Actions actions;
-        private Settings settings;
+        private Settings? settings = null;
 
         public Keys (Meta.Display display, Actions actions) {
             this.display = display;
             this.actions = actions;
-            settings = new Settings ("io.github.arsfeld.paper.keybindings");
+            // new Settings() on a schema that is not installed aborts the
+            // process, and here the process is the whole session: without the
+            // schema the strip still tiles, it just has no keys.
+            var source = SettingsSchemaSource.get_default ();
+            if (source == null || source.lookup (SCHEMA, true) == null) {
+                warning ("pantheon-paper: schema %s is not installed; keybindings are off", SCHEMA);
+                return;
+            }
+            settings = new Settings (SCHEMA);
             foreach (var name in Actions.NAMES) {
                 display.add_keybinding (name, settings, Meta.KeyBindingFlags.NONE, (d, w, e, binding) => {
                     this.actions.run (binding.get_name ());
@@ -92,6 +102,9 @@ namespace Paper {
         }
 
         public void destroy () {
+            if (settings == null) {
+                return;
+            }
             foreach (var name in Actions.NAMES) {
                 display.remove_keybinding (name);
             }
