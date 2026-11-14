@@ -53,6 +53,14 @@ namespace Paper {
             this.count = count;
             wait_for_file = Environment.get_variable ("PAPER_DEMO_WAIT") == "1";
             FileUtils.remove (NEXT);
+            // Where Mutter's focus goes, for the D-Bus focus question (a click
+            // on the desktop, another client's popup).
+            display.notify["focus-window"].connect (() => {
+                var w = display.focus_window;
+                message ("paper-demo: focus-window %s", w == null ? "none"
+                    : "%s type=%s app=%s".printf (w.get_title () ?? "?", ((int) w.get_window_type ()).to_string (),
+                        w.get_gtk_application_id () ?? w.get_wm_class () ?? "-"));
+            });
 
             add ("open", () => {});
             if (Environment.get_variable ("PAPER_DEMO_IDLE") == "1") {

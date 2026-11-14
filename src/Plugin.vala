@@ -4,6 +4,7 @@ namespace Paper {
         private Keys? keys = null;
         private Mouse? mouse = null;
         private Demo? demo = null;
+        private Bus? bus = null;
 
         public override void initialize (Gala.WindowManager wm) {
             var display = wm.get_display ();
@@ -12,6 +13,7 @@ namespace Paper {
             var actions = new Actions (controller, display);
             keys = new Keys (display, actions);
             mouse = new Mouse (wm, controller);
+            bus = Bus.own (controller);
 
             var n = int.parse (Environment.get_variable ("PAPER_DEMO") ?? "0");
             if (n > 0) {
@@ -21,6 +23,10 @@ namespace Paper {
         }
 
         public override void destroy () {
+            if (bus != null) {
+                bus.unown ();
+                bus = null;
+            }
             if (keys != null) {
                 keys.destroy ();
                 keys = null;

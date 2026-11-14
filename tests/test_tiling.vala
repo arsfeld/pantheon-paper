@@ -53,5 +53,42 @@ void main (string[] args) {
         assert (!should_tile (f));
     });
 
+    // R5: the user's toggle overrides an app rule both ways.
+    Test.add_func ("/float/toggle_without_rule", () => {
+        var f = new FloatState ();
+        assert (!f.floats (1, false));
+        f.toggle (1, false);
+        assert (f.floats (1, false));
+        assert (f.user_floated (1) && !f.rule_floats (1, false));
+        f.toggle (1, false);
+        assert (!f.floats (1, false));
+    });
+    Test.add_func ("/float/toggle_overrides_rule", () => {
+        var f = new FloatState ();
+        assert (f.floats (1, true));
+        assert (f.rule_floats (1, true));
+        f.toggle (1, true);
+        assert (!f.floats (1, true));
+        assert (!f.user_floated (1) && !f.rule_floats (1, true));
+        f.toggle (1, true);
+        assert (f.floats (1, true));
+    });
+    Test.add_func ("/float/rule_dropped_after_unfloat", () => {
+        var f = new FloatState ();
+        f.toggle (1, true); // tiled despite the rule
+        assert (!f.floats (1, false));
+        f.toggle (1, false); // the rule is gone: a plain user float
+        assert (f.floats (1, false) && f.floats (1, true));
+    });
+    Test.add_func ("/float/forget", () => {
+        var f = new FloatState ();
+        f.toggle (1, false);
+        f.toggle (2, true);
+        f.forget (1);
+        f.forget (2);
+        assert (!f.floats (1, false));
+        assert (f.floats (2, true));
+    });
+
     Test.run ();
 }

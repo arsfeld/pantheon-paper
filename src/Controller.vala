@@ -29,7 +29,10 @@ namespace Paper {
         private Gee.HashMap<Meta.Workspace, Strip> strips = new Gee.HashMap<Meta.Workspace, Strip> ();
         private Gee.HashMap<uint64?, Meta.Window> windows = new Gee.HashMap<uint64?, Meta.Window> (id_hash, id_equal);
         private Gee.HashMap<uint64?, Gee.ArrayList<ulong>> handlers = new Gee.HashMap<uint64?, Gee.ArrayList<ulong>> (id_hash, id_equal);
-        private Gee.HashSet<uint64?> floating = new Gee.HashSet<uint64?> (id_hash, id_equal);
+        /** User float toggles, which override app rules both ways. */
+        private FloatState floats = new FloatState ();
+        /** The last focused normal window, for the D-Bus interface. */
+        private FocusTracker focus = new FocusTracker ();
         private Gee.HashSet<uint64?> adopted = new Gee.HashSet<uint64?> (id_hash, id_equal);
         /**
          * Workspaces whose tiling is switched off for this session. Pantheon's
@@ -82,7 +85,11 @@ namespace Paper {
         private Applier applier;
         private Settings interface_settings;
         public bool applying { get; private set; default = false; }
-        /** Either switch changed, or the active workspace did (`workspace_tiled` may differ there). */
+        /**
+         * Something the D-Bus interface reports may have changed: either switch,
+         * the active workspace (`workspace_tiled` may differ there), the last
+         * focused normal window, or whether a window floats.
+         */
         public signal void state_changed ();
         /** A window the user is moving or resizing: layouts leave it where the pointer has it. */
         public uint64 grabbed { get; set; default = 0; }
@@ -218,6 +225,9 @@ namespace Paper {
                         reevaluate (w, Reason.FLOAT);
                     }
                 }
+                relayout ();
+                state_changed ();
+                return;
             }
             relayout ();
         }
@@ -240,8 +250,64 @@ namespace Paper {
             return rule != null && rule.own_column;
         }
 
+        /** Whether a rule floats the window, before the user's toggle. */
+        private bool rule_floats (Meta.Window w) {
+            var rule = rule_for (w);
+            return rule != null && rule.float_;
+        }
+
+        /** The effective state: the user's toggle, or else the window's rule. */
         public bool is_floating (uint64 id) {
-            return floating.contains (id);
+            var w = window_for (id);
+            return w != null && floats.floats (id, rule_floats (w));
+        }
+
+        // ---- the focused window and app ids, for the D-Bus interface ----
+
+        /** A normal toplevel: not a dialog, popup, utility, dock, override-redirect or taskbar-less window. */
+        private static bool is_normal (Meta.Window w) {
+            return w.get_window_type () == Meta.WindowType.NORMAL
+                && !w.is_override_redirect () && !w.is_skip_taskbar ();
+        }
+
+        /** The last focused normal window, still tracked; null if there is none. */
+        public Meta.Window? focused_window () {
+            return focus.last == 0 ? null : window_for (focus.last);
+        }
+
+        /**
+         * The window's app: id is its GTK application id, else its sandboxed
+         * app id, else its WM_CLASS ("" when it has none); name is the matching
+         * .desktop file's name, else the id.
+         */
+        public void app_of (Meta.Window w, out string id, out string name) {
+            id = w.get_gtk_application_id () ?? w.get_sandboxed_app_id () ?? w.get_wm_class () ?? "";
+            name = id;
+            if (id == "") {
+                return;
+            }
+            // WM_CLASS is often capitalised where the .desktop file is not.
+            foreach (var candidate in new string[] { id, id.down () }) {
+                var info = new GLib.DesktopAppInfo (candidate + ".desktop");
+                if (info != null) {
+                    name = info.get_name ();
+                    return;
+                }
+            }
+        }
+
+        /** Every tracked normal window, in creation order. */
+        public Gee.List<Meta.Window> normal_windows () {
+            var keys = new Gee.ArrayList<uint64?> (id_equal);
+            keys.add_all (windows.keys);
+            keys.sort ((a, b) => (uint64) a < (uint64) b ? -1 : ((uint64) a > (uint64) b ? 1 : 0));
+            var list = new Gee.ArrayList<Meta.Window> ();
+            foreach (var id in keys) {
+                if (is_normal (windows[id])) {
+                    list.add (windows[id]);
+                }
+            }
+            return list;
         }
 
         // ---- switching tiling off and on ----
@@ -282,9 +348,10 @@ namespace Paper {
                 for (int i = 0; i < manager.get_n_workspaces (); i++) {
                     var ws = manager.get_workspace_by_index (i);
                     if (!off.contains (ws)) {
-                        adopt (ws);
+                        adopt (ws, false);
                     }
                 }
+                relayout ();
             } else {
                 // A copy: release unsets entries (to_array () warns in C).
                 var all = new Gee.ArrayList<Meta.Workspace> ();
@@ -343,9 +410,10 @@ namespace Paper {
 
         /**
          * Tile the workspace's windows again, as columns ordered left to right
-         * by where their frames are now.
+         * by where their frames are now. With `lay_out` false the caller lays
+         * out, once for several workspaces.
          */
-        private void adopt (Meta.Workspace ws) {
+        private void adopt (Meta.Workspace ws, bool lay_out = true) {
             if (!tiles (ws)) {
                 return;
             }
@@ -380,7 +448,9 @@ namespace Paper {
                 strip.focus (focus.get_id ());
             }
             scroll_to_focus (strip, work_area_of (ws), this);
-            relayout ();
+            if (lay_out) {
+                relayout ();
+            }
         }
 
         // ---- window tracking ----
@@ -456,7 +526,9 @@ namespace Paper {
                 }
             }
             handlers.unset (id);
-            floating.remove (id);
+            floats.forget (id);
+            var had_focus = focus.last == id;
+            focus.forget (id);
             adopted.remove (id);
             slots.unset (id);
             requested.unset (id);
@@ -465,20 +537,22 @@ namespace Paper {
             asked_width.unset (id);
             asked_size.unset (id);
             relayout ();
+            if (had_focus) {
+                state_changed ();
+            }
         }
 
         private WindowFacts facts_for (Meta.Window w) {
-            var rule = rule_for (w);
+            var id = w.get_id ();
             return WindowFacts () {
-                normal_type = w.get_window_type () == Meta.WindowType.NORMAL
-                    && !w.is_override_redirect () && !w.is_skip_taskbar (),
+                normal_type = is_normal (w),
                 has_transient_parent = w.get_transient_for () != null,
                 fullscreen = w.is_fullscreen (),
                 minimized = w.minimized,
                 on_primary = w.get_monitor () == display.get_primary_monitor (),
                 on_all_workspaces = w.is_on_all_workspaces (),
-                floating = floating.contains (w.get_id ()),
-                rule_float = rule != null && rule.float_,
+                floating = floats.user_floated (id),
+                rule_float = floats.rule_floats (id, rule_floats (w)),
             };
         }
 
@@ -546,18 +620,26 @@ namespace Paper {
             relayout ();
         }
 
+        /** Flip whether the window floats, its rule's verdict included. */
         public void toggle_float (Meta.Window w) {
             var id = w.get_id ();
-            if (!floating.remove (id)) {
-                floating.add (id);
+            if (!windows.has_key (id)) {
+                return;
             }
+            floats.toggle (id, rule_floats (w));
             reevaluate (w, Reason.FLOAT);
+            state_changed ();
         }
 
         private void on_focus () {
             var w = display.focus_window;
             if (w == null) {
                 return;
+            }
+            var before = focus.last;
+            focus.focused (w.get_id (), is_normal (w));
+            if (focus.last != before) {
+                state_changed ();
             }
             var s = strip_of (w.get_id ());
             if (s == null) {

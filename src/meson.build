@@ -7,4 +7,5 @@ plugin_sources += files(
     'Actions.vala',
     'Mouse.vala',
     'Compat.vala',
+    'Bus.vala',
 )

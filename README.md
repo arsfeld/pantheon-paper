@@ -48,6 +48,31 @@ value in your own settings still wins. `tools/keys-check.py` fails on any
 clash left. Toggle-full and barf avoid Super+F (picture-in-picture) and Super+O
 (rotation lock) instead.
 
+## D-Bus
+
+While Gala runs with the plugin, it owns `io.github.arsfeld.Paper` on the
+session bus (object `/io/github/arsfeld/Paper`, same interface name), live
+session state for the panel indicator and the settings page:
+
+| Member | Kind | Meaning |
+|---|---|---|
+| `WorkspaceTiled` | property `b`, read/write | Tiling on the active workspace (its own switch, independent of `enabled`) |
+| `FocusedFloating` | property `b`, read/write | Whether the focused window floats; writing a different value toggles it |
+| `FocusedApp` | property `(ss)`, read | App id and name of the focused window, `("", "")` if none |
+| `RunningApps` | method `→ a(ss)` | App id and name of every open normal window, once per app |
+
+Changes are announced with `PropertiesChanged`. "Focused" is the last focused
+*normal* window. Measured in the headless Gala: opening a Wingpanel popover
+moves Mutter's focus to Wingpanel, a DOCK window, and clicking empty desktop
+leaves focus where it was; in both cases `FocusedApp` keeps naming the app
+window. A GTK 3 window with the POPUP_MENU type hint
+(`tests/demo-window.py --popup`) is no stand-in for a popover: over Wayland
+the hint is never sent, Mutter manages it as a normal window, and it counts
+as focused like any other app.
+
+A float toggle, from the key or the bus, overrides an app rule both ways: a
+window a rule floats can be tiled, and floated again.
+
 ## Build and test
 
 ```
