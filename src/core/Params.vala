@@ -8,6 +8,12 @@ namespace Paper {
     public class Params : Object {
         /** Gap between columns and between stacked windows, in logical pixels. */
         public int gap = 8;
+        /**
+         * Space kept between the strip and the screen edges, where the column
+         * beyond a focused one peeks in. 0 here; the Controller sets it from
+         * the settings.
+         */
+        public int margin = 0;
         public double[] presets = DEFAULT_PRESETS;
         public int default_preset = 1;
 
@@ -15,9 +21,14 @@ namespace Paper {
             return preset.clamp (0, presets.length - 1);
         }
 
+        /** The width columns are sized against: the work area less both margins, never under half of it. */
+        public int usable (int work_width) {
+            return int.max (work_width - 2 * margin, work_width / 2);
+        }
+
         /** Column width in pixels for a work area this wide. */
         public int pixels (int preset, int work_width) {
-            return (int) Math.round (work_width * presets[clamp_preset (preset)]) - gap;
+            return (int) Math.round (usable (work_width) * presets[clamp_preset (preset)]) - gap;
         }
     }
 

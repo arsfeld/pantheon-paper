@@ -27,6 +27,12 @@ Placement at (LayoutResult r, uint64 id) {
     assert_not_reached ();
 }
 
+Strip margined (int n) {
+    var s = strip_of (n);
+    s.params.margin = 20;
+    return s;
+}
+
 void main (string[] args) {
     Test.init (ref args);
 
@@ -148,12 +154,12 @@ void main (string[] args) {
         assert (s.scroll_x == 0);
     });
 
-    Test.add_func ("/layout/scroll_to_focus_wide_column_left_aligns", () => {
+    Test.add_func ("/layout/scroll_to_focus_wide_column_centres", () => {
         var s = strip_of (2);
         var h = new MapHints ();
         h.widths[2] = 2500;
         scroll_to_focus (s, WORK, h);
-        assert (s.scroll_x == 960);
+        assert (s.scroll_x == 1250); // left 960, width 2500, centred at x -290
     });
 
     Test.add_func ("/layout/scroll_to_focus_empty_strip", () => {
@@ -187,6 +193,56 @@ void main (string[] args) {
         s.params.gap = 20;
         var r = layout (s, WORK, new NoHints ());
         assert (r.columns[1].x - (r.columns[0].x + r.columns[0].width) == 20);
+    });
+
+    // The margin: the focused column stops short of the edge, so the
+    // neighbour beyond it peeks in. WORK is 1920 wide, gap 8: U = 1880.
+    Test.add_func ("/layout/margin_halves", () => {
+        var r = layout (margined (2), WORK, new NoHints ());
+        assert (at (r, 1).rect.x == 20 && at (r, 1).rect.width == 932);
+        assert (at (r, 2).rect.x == 960 && at (r, 2).rect.width == 932);
+    });
+
+    Test.add_func ("/layout/margin_full_width", () => {
+        var s = margined (2);
+        s.focus (1);
+        s.toggle_full ();
+        var r = layout (s, WORK, new NoHints ());
+        assert (at (r, 1).rect.x == 20 && at (r, 1).rect.width == 1880);
+    });
+
+    Test.add_func ("/layout/margin_scroll_to_focus_peeks", () => {
+        var s = margined (4);
+        s.focus (3);
+        scroll_to_focus (s, WORK, new NoHints ());
+        assert (s.scroll_x == 932);
+        var r = layout (s, WORK, new NoHints ());
+        assert (at (r, 3).rect.x + at (r, 3).rect.width == 1900); // 20 px short of the edge
+        assert (at (r, 4).parked && at (r, 4).rect.x == 1845); // its last 20 px show
+        s.focus (1);
+        scroll_to_focus (s, WORK, new NoHints ());
+        assert (s.scroll_x == 0 && at (layout (s, WORK, new NoHints ()), 1).rect.x == 20);
+    });
+
+    Test.add_func ("/layout/margin_center_focus", () => {
+        var s = margined (3);
+        s.focus (2);
+        center_focus (s, WORK, new NoHints ());
+        assert (s.scroll_x == 466 && at (layout (s, WORK, new NoHints ()), 2).rect.x == 494);
+    });
+
+    Test.add_func ("/layout/margin_walled_right_peeks", () => {
+        var r = layout (margined (3), WORK, new NoHints (), false, true);
+        // Flush with the wall and lowered under column 2, which ends at 1892.
+        assert (at (r, 3).parked && at (r, 3).rect.x == 988);
+    });
+
+    Test.add_func ("/layout/margin_never_eats_half_the_screen", () => {
+        var s = strip_of (1);
+        s.params.margin = 100;
+        Rect narrow = { 0, 0, 300, 800 };
+        assert (s.params.usable (300) == 150);
+        assert (layout (s, narrow, new NoHints ()).windows[0].rect.width == 67); // round (150 * 0.5) - 8
     });
 
     Test.run ();

@@ -26,7 +26,7 @@ namespace Paper {
     private int column_width (Params p, Column col, Rect work, WidthHints hints) {
         int w;
         if (col.full) {
-            w = work.width;
+            w = p.usable (work.width);
         } else if (col.free_px > 0) {
             w = col.free_px;
         } else {
@@ -70,7 +70,7 @@ namespace Paper {
         int left = 0;
         foreach (var col in s.columns) {
             int w = column_width (s.params, col, work, hints);
-            int x = work.x + left - s.scroll_x;
+            int x = work.x + s.params.margin + left - s.scroll_x;
             int right = work.x + work.width;
             int visible = int.min (x + w, right) - int.max (x, work.x);
             bool parked = false;
@@ -105,7 +105,11 @@ namespace Paper {
         return result;
     }
 
-    /** Scroll the least needed to show the focused column whole (left-aligned if too wide). */
+    /**
+     * Scroll the least needed to show the focused column whole between the
+     * margins (centred if it is too wide for them), so the column beyond an
+     * edge keeps a margin's width of itself on screen.
+     */
     public void scroll_to_focus (Strip s, Rect work, WidthHints hints) {
         int c = s.focused_column ();
         if (c < 0) {
@@ -113,10 +117,13 @@ namespace Paper {
         }
         int left, width;
         column_span (s, c, work, hints, out left, out width);
-        if (width >= work.width || left < s.scroll_x) {
+        int usable = s.params.usable (work.width);
+        if (width >= usable) {
+            s.scroll_x = s.params.margin + left - (work.width - width) / 2;
+        } else if (left < s.scroll_x) {
             s.scroll_x = left;
-        } else if (left + width > s.scroll_x + work.width) {
-            s.scroll_x = left + width - work.width;
+        } else if (left + width > s.scroll_x + usable) {
+            s.scroll_x = left + width - usable;
         }
     }
 
@@ -128,7 +135,7 @@ namespace Paper {
         }
         int left, width;
         column_span (s, c, work, hints, out left, out width);
-        s.scroll_x = left + width / 2 - work.width / 2;
+        s.scroll_x = s.params.margin + left + width / 2 - work.width / 2;
     }
 
     /** Pan by dx, keeping the strip within half a screen of either end. */
