@@ -9,4 +9,5 @@ plugin_sources += files(
     'Compat.vala',
     'Bus.vala',
     'FocusRing.vala',
+    'EdgePreview.vala',
 )

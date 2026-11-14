@@ -5,13 +5,18 @@
  * HAS_MUTTER47/48 are defined by meson.build for libmutter-16.
  */
 namespace Paper {
-    /** The pointer position and modifiers (the cursor tracker moved from Display to Backend in 48). */
-    public void pointer (Meta.Display display, out Graphene.Point p, out Clutter.ModifierType mods) {
+    /** The cursor tracker (it moved from Display to Backend in 48). */
+    public unowned Meta.CursorTracker cursor_tracker (Meta.Display display) {
 #if HAS_MUTTER48
-        display.get_context ().get_backend ().get_cursor_tracker ().get_pointer (out p, out mods);
+        return display.get_context ().get_backend ().get_cursor_tracker ();
 #else
-        display.get_cursor_tracker ().get_pointer (out p, out mods);
+        return display.get_cursor_tracker ();
 #endif
+    }
+
+    /** The pointer position and modifiers. */
+    public void pointer (Meta.Display display, out Graphene.Point p, out Clutter.ModifierType mods) {
+        cursor_tracker (display).get_pointer (out p, out mods);
     }
 
     /** Sets an actor's background colour (Clutter.Color gave way to Cogl.Color in 47). */

@@ -87,6 +87,7 @@ namespace Paper {
         private ulong config_handler = 0;
         private Applier applier;
         private FocusRing ring = new FocusRing ();
+        private EdgePreview preview;
         private Settings interface_settings;
         public bool applying { get; private set; default = false; }
         /**
@@ -105,6 +106,7 @@ namespace Paper {
         construct {
             display = wm.get_display ();
             applier = new Applier (this);
+            preview = new EdgePreview (wm, this);
             interface_settings = new Settings ("org.gnome.desktop.interface");
             refresh_params ();
             config_handler = config.changed.connect (on_config_changed);
@@ -152,6 +154,7 @@ namespace Paper {
                 untrack (id);
             }
             ring.destroy ();
+            preview.destroy ();
         }
 
         // ---- lookups used by Keys, Mouse, Applier and Demo ----
@@ -229,6 +232,7 @@ namespace Paper {
                 return;
             }
             if (key == "edge-preview") {
+                preview.refresh ();
                 return;
             }
             if (key == "margin") {
@@ -896,10 +900,11 @@ namespace Paper {
                     requested[p.id] = p.rect.width;
                 }
                 var result = layout (strip, work, this, wall_left, wall_right);
-                applier.apply (result, animate && entry.key == active && animations_enabled ());
+                applier.apply (result, work, animate && entry.key == active && animations_enabled ());
             }
             applying = false;
             refresh_ring ();
+            preview.refresh ();
         }
 
         /** The ring goes round the focused window while it is tiled on the visible workspace, and nowhere else; `focus-ring` off hides it. */
@@ -947,7 +952,8 @@ namespace Paper {
          * One line per column of the active strip, for the demo log, then
          * `|| free:` and every other normal window of the active workspace
          * (floating, or all of them while tiling is off there), then `|| ring:`
-         * and where the focus ring is on the stage.
+         * and where the focus ring is on the stage, then `|| preview:` and the
+         * edge preview's side, window and place.
          */
         public string describe () {
             var s = current_strip ();
@@ -977,7 +983,7 @@ namespace Paper {
             if (free.length > 0) {
                 text += " || free: " + string.joinv (" | ", free);
             }
-            return text + " || ring: " + ring.describe ();
+            return text + " || ring: " + ring.describe () + " || preview: " + preview.describe ();
         }
 
         /** A window for the debug log (G_MESSAGES_DEBUG=pantheon-paper in Gala's environment). */

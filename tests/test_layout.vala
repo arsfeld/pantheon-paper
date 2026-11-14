@@ -284,5 +284,20 @@ void main (string[] args) {
         assert (hidden_beyond (r, WORK, Side.LEFT) == 0 && hidden_beyond (r, WORK, Side.RIGHT) == -1);
     });
 
+    // Parked columns share an x on each side; the one nearest the visible
+    // columns must end up on top, so the window peeking in is the one an
+    // edge preview shows. Each lower () sends a window to the bottom.
+    Test.add_func ("/layout/lowering_order_nearest_on_top", () => {
+        var s = margined (4);
+        s.focus (4);
+        scroll_to_focus (s, WORK, new NoHints ());
+        var order = lowering_order (layout (s, WORK, new NoHints ()), WORK);
+        assert (order.size == 2 && order[0] == 2 && order[1] == 1);
+        s.focus (1);
+        scroll_to_focus (s, WORK, new NoHints ());
+        order = lowering_order (layout (s, WORK, new NoHints ()), WORK);
+        assert (order.size == 2 && order[0] == 3 && order[1] == 4);
+    });
+
     Test.run ();
 }

@@ -7,6 +7,11 @@ windows float. The focused tiled window has a ring in the accent colour, in
 the gap around it, or just inside its edge where it meets the panel or the
 screen edge.
 
+The strip keeps a margin (20 px) from each screen edge, so a column beyond the
+edge peeks in there, as in PaperWM. Resting the pointer against a screen edge
+shows a thumbnail of the window hidden beyond it; clicking the peeking strip
+focuses that window.
+
 Built against Gala 8.6 with Mutter 46 (elementary OS 8) or Mutter 48 (NixOS).
 The few calls that differ between them are in `src/Compat.vala`.
 

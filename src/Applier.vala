@@ -11,16 +11,20 @@ namespace Paper {
             this.controller = controller;
         }
 
-        public void apply (LayoutResult result, bool animate) {
+        public void apply (LayoutResult result, Rect work, bool animate) {
+            // Beneath the visible columns (a column parked inside an edge that
+            // borders another monitor overlaps them), nearest on top, so the
+            // window peeking in at an edge is the one beyond it.
+            foreach (var id in lowering_order (result, work)) {
+                var w = controller.window_for (id);
+                if (w != null && id != controller.grabbed && w != w.get_display ().focus_window) {
+                    w.lower ();
+                }
+            }
             foreach (var p in result.windows) {
                 var w = controller.window_for (p.id);
                 if (w == null || p.id == controller.grabbed) {
                     continue;
-                }
-                if (p.parked && w != w.get_display ().focus_window) {
-                    // Beneath the visible columns: a column parked inside an edge
-                    // that borders another monitor overlaps them.
-                    w.lower ();
                 }
                 var f = w.get_frame_rect ();
                 var r = p.rect;

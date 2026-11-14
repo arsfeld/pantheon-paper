@@ -15,6 +15,8 @@ namespace Paper {
         public Rect rect;
         /** Pushed against a screen edge with only a sliver showing. */
         public bool parked;
+        /** Its column's index in the strip. */
+        public int column;
     }
 
     public class LayoutResult : Object {
@@ -105,6 +107,7 @@ namespace Paper {
                     id = col.windows[r],
                     rect = Rect (x, y, w, h),
                     parked = parked,
+                    column = result.columns.size - 1,
                 });
                 y += h + gap;
             }
@@ -121,18 +124,46 @@ namespace Paper {
      */
     public int hidden_beyond (LayoutResult r, Rect work, Side side) {
         int n = r.columns.size;
-        int mid = work.x + work.width / 2;
         for (int k = 0; k < n; k++) {
             int i = side == Side.RIGHT ? k : n - 1 - k;
             int centre = r.columns[i].x + r.columns[i].width / 2;
             bool hidden = side == Side.RIGHT
-                ? centre > work.x + work.width || (r.parked[i] && centre > mid)
-                : centre < work.x || (r.parked[i] && centre < mid);
+                ? centre > work.x + work.width || (r.parked[i] && !on_left (r.columns[i], work))
+                : centre < work.x || (r.parked[i] && on_left (r.columns[i], work));
             if (hidden) {
                 return i;
             }
         }
         return -1;
+    }
+
+    /** Which half of the work area a column sits on: where it is parked, if it is. */
+    private bool on_left (Rect c, Rect work) {
+        return c.x + c.width / 2 < work.x + work.width / 2;
+    }
+
+    /**
+     * The parked windows in the order to lower them, nearest the visible
+     * columns first. Lowering sends a window to the bottom, so the nearest
+     * parked column ends on top on each side, and its strip is what peeks in
+     * at the edge.
+     */
+    public Gee.List<uint64?> lowering_order (LayoutResult r, Rect work) {
+        var order = new Gee.ArrayList<uint64?> ();
+        int n = r.columns.size;
+        // Left side: from the visible columns outward (high index to low); then the right, low to high.
+        for (int k = 0; k < 2 * n; k++) {
+            int c = k < n ? n - 1 - k : k - n;
+            if (!r.parked[c] || on_left (r.columns[c], work) != (k < n)) {
+                continue;
+            }
+            foreach (var p in r.windows) {
+                if (p.column == c) {
+                    order.add (p.id);
+                }
+            }
+        }
+        return order;
     }
 
     /**
