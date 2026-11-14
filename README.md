@@ -33,7 +33,7 @@ Gala loads plugins only at startup, and a crash in one ends the session.
 | Super+↑/↓ | Focus the window above/below |
 | Super+Shift+←/→ | Move the column |
 | Super+Shift+↑/↓ | Move the window within its column |
-| Super+R | Cycle width 1/3 → 1/2 → 2/3 |
+| Super+R | Cycle the width presets (1/3 → 1/2 → 2/3 by default) |
 | Super+M | Toggle full width |
 | Super+I / Super+U | Slurp / barf |
 | Super+C | Centre the focused column |
@@ -49,6 +49,44 @@ Debian package changes these defaults with
 value in your own settings still wins. `tools/keys-check.py` fails on any
 clash left. Toggle-full and barf avoid Super+F (picture-in-picture) and Super+O
 (rotation lock) instead.
+
+## Settings
+
+`io.github.arsfeld.paper` (path `/io/github/arsfeld/paper/`), read live:
+
+| Key | Type | Default | Meaning |
+|---|---|---|---|
+| `enabled` | `b` | `true` | Tiling for the session |
+| `gap` | `i` (0–48) | `8` | Space between columns and between stacked windows, in logical px |
+| `width-presets` | `ad` | `[0.3333333333, 0.5, 0.6666666667]` | Widths Super+R steps through, as fractions of the work area: 2 to 6 entries, each in [0.1, 1.0], strictly increasing (anything else is logged once and the defaults are used) |
+| `default-width` | `d` | `0.5` | Width of a new column, snapped to the nearest preset |
+| `animate` | `b` | `true` | Layout animations, also off when `enable-animations` is |
+| `app-rules` | `a(sbdb)` | `[]` | Per-app rules: (app id, float, initial width, own column). Width `0` is the default, `1` full width, anything else snaps to a preset. The id matches the GTK application id, the sandboxed app id or WM_CLASS, case-insensitively; the first match wins |
+
+## Panel indicator
+
+A Wingpanel indicator whose icon shows tiling on, off for this workspace, or
+off. Its popover has switches for **Tiling** (`enabled`), **Tile this
+workspace** and **Float "<window>"** (both over D-Bus, below), a **Gap**
+slider, an **Animate** switch, a **Shortcuts** list, **Add rule for
+"<app>"…** (opens the rules page with that app) and **Tiling Settings…**. When
+the plugin is not running, the live switches are insensitive with "Tiling
+plugin not running — log out and back in"; the settings controls still work.
+
+## Settings page
+
+**Tiling** in System Settings (Personal; `settings://paper`, also
+`settings://paper/rules` and `settings://paper/shortcuts`):
+
+- **Layout:** enabled, gap, the width presets (refuses an invalid list), the
+  default width, animate.
+- **App Rules:** float, initial width and own column per app; add from the
+  running apps or by id. A rule left at all defaults is removed.
+- **Shortcuts:** click a row to capture a key (Escape cancels, Backspace
+  clears). A clash names the other action and offers to replace it.
+
+The indicator and the page run in Wingpanel's and Settings' processes, so a
+crash in either restarts that process and never ends the session.
 
 ## D-Bus
 
