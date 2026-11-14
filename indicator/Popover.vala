@@ -2,10 +2,10 @@ namespace Paper {
     /**
      * The indicator's popover: a stack of the main page and the Shortcuts
      * page. Main page, top to bottom: Tiling, Tile this workspace, Float
-     * "<window>", the no-plugin notice, Gap, Animate, Shortcuts, Add rule for
+     * "<window>", the no-plugin notice, Gap, Margin, Animate, Shortcuts, Add rule for
      * "<app>"…, Tiling Settings….
      *
-     * Tiling, Gap and Animate are GSettings and always work. The two live
+     * Tiling, Gap, Margin and Animate are GSettings and always work. The two live
      * switches go through the model to the plugin's bus object and are
      * insensitive while it has no owner.
      */
@@ -54,24 +54,8 @@ namespace Paper {
             model.bind_property ("connected", not_running, "visible",
                 BindingFlags.SYNC_CREATE | BindingFlags.INVERT_BOOLEAN);
 
-            var gap_label = new Gtk.Label ("Gap") {
-                halign = Gtk.Align.START,
-                margin_start = 12
-            };
-            var gap = new Gtk.Scale.with_range (Gtk.Orientation.HORIZONTAL, 0, 48, 1) {
-                hexpand = true,
-                digits = 0,
-                draw_value = true,
-                value_pos = Gtk.PositionType.RIGHT,
-                margin_end = 12
-            };
-            settings.bind ("gap", gap.adjustment, "value", SettingsBindFlags.DEFAULT);
-            var gap_row = new Gtk.Box (Gtk.Orientation.HORIZONTAL, 12) {
-                margin_top = 3,
-                margin_bottom = 3
-            };
-            gap_row.add (gap_label);
-            gap_row.add (gap);
+            var gap_row = scale_row ("Gap", "gap", 48);
+            var margin_row = scale_row ("Margin", "margin", 100);
 
             var animate = new Granite.SwitchModelButton ("Animate");
             settings.bind ("animate", animate, "active", SettingsBindFlags.DEFAULT);
@@ -103,6 +87,7 @@ namespace Paper {
             main.add (not_running);
             main.add (separator ());
             main.add (gap_row);
+            main.add (margin_row);
             main.add (animate);
             main.add (focus_ring);
             main.add (separator ());
@@ -117,6 +102,51 @@ namespace Paper {
             sync ();
             show_all ();
         }
+
+        /** A labelled slider bound to an int key, 0 to `max`. */
+
+        private Gtk.Box scale_row (string label, string key, int max) {
+
+            var name = new Gtk.Label (label) {
+
+                halign = Gtk.Align.START,
+
+                margin_start = 12
+
+            };
+
+            var scale = new Gtk.Scale.with_range (Gtk.Orientation.HORIZONTAL, 0, max, 1) {
+
+                hexpand = true,
+
+                digits = 0,
+
+                draw_value = true,
+
+                value_pos = Gtk.PositionType.RIGHT,
+
+                margin_end = 12
+
+            };
+
+            model.settings.bind (key, scale.adjustment, "value", SettingsBindFlags.DEFAULT);
+
+            var row = new Gtk.Box (Gtk.Orientation.HORIZONTAL, 12) {
+
+                margin_top = 3,
+
+                margin_bottom = 3
+
+            };
+
+            row.add (name);
+
+            row.add (scale);
+
+            return row;
+
+        }
+
 
         private static Gtk.Separator separator () {
             return new Gtk.Separator (Gtk.Orientation.HORIZONTAL) {

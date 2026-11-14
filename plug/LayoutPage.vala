@@ -27,19 +27,8 @@ namespace Paper {
             settings.bind ("enabled", status_switch, "active", SettingsBindFlags.DEFAULT);
             presets = new PresetsModel (settings);
 
-            // `gap` is an int and a spin button's value a double: copied by
-            // hand rather than trusting GSettings' numeric mapping.
-            var gap = new Gtk.SpinButton.with_range (0, 48, 1) {
-                valign = Gtk.Align.CENTER,
-                value = settings.get_int ("gap")
-            };
-            gap.value_changed.connect (() => {
-                var v = (int) gap.value;
-                if (settings.get_int ("gap") != v) {
-                    settings.set_int ("gap", v);
-                }
-            });
-            settings.changed["gap"].connect (() => gap.value = settings.get_int ("gap"));
+            var gap = int_spin ("gap", 48);
+            var margin = int_spin ("margin", 100);
 
             var animate = new Gtk.Switch () {
                 valign = Gtk.Align.CENTER
@@ -50,6 +39,11 @@ namespace Paper {
                 valign = Gtk.Align.CENTER
             };
             settings.bind ("focus-ring", focus_ring, "active", SettingsBindFlags.DEFAULT);
+
+            var edge_preview = new Gtk.Switch () {
+                valign = Gtk.Align.CENTER
+            };
+            settings.bind ("edge-preview", edge_preview, "active", SettingsBindFlags.DEFAULT);
 
             default_width = new Gtk.DropDown.from_strings ({}) {
                 valign = Gtk.Align.CENTER
@@ -66,9 +60,11 @@ namespace Paper {
                 row_spacing = 12
             };
             attach_row (general, 0, "Gap between windows", "In pixels, between columns and between stacked windows", gap);
-            attach_row (general, 1, "New column width", "Snaps to one of the widths below", default_width);
-            attach_row (general, 2, "Animate", "Also needs the desktop's animations on", animate);
-            attach_row (general, 3, "Focus ring", "An outline in the accent colour around the focused tiled window", focus_ring);
+            attach_row (general, 1, "Margin at screen edges", "Where the next window peeks in; 0 for none", margin);
+            attach_row (general, 2, "New column width", "Snaps to one of the widths below", default_width);
+            attach_row (general, 3, "Animate", "Also needs the desktop's animations on", animate);
+            attach_row (general, 4, "Focus ring", "An outline in the accent colour around the focused tiled window", focus_ring);
+            attach_row (general, 5, "Edge previews", "A thumbnail of the hidden window when the pointer rests at a screen edge", edge_preview);
 
             preset_list = new Gtk.ListBox () {
                 selection_mode = Gtk.SelectionMode.NONE
@@ -113,6 +109,43 @@ namespace Paper {
             presets.changed.connect (fill);
             fill ();
         }
+
+        /**
+
+         * A spin button for an int key. A spin button's value is a double: copied
+
+         * by hand rather than trusting GSettings' numeric mapping.
+
+         */
+
+        private Gtk.SpinButton int_spin (string key, int max) {
+
+            var spin = new Gtk.SpinButton.with_range (0, max, 1) {
+
+                valign = Gtk.Align.CENTER,
+
+                value = settings.get_int (key)
+
+            };
+
+            spin.value_changed.connect (() => {
+
+                var v = (int) spin.value;
+
+                if (settings.get_int (key) != v) {
+
+                    settings.set_int (key, v);
+
+                }
+
+            });
+
+            settings.changed[key].connect (() => spin.value = settings.get_int (key));
+
+            return spin;
+
+        }
+
 
         private static void attach_row (Gtk.Grid grid, int row, string title, string subtitle, Gtk.Widget control) {
             var label = new Gtk.Label (title) {

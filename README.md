@@ -58,10 +58,12 @@ clash left. Toggle-full and barf avoid Super+F (picture-in-picture) and Super+O
 |---|---|---|---|
 | `enabled` | `b` | `true` | Tiling for the session |
 | `gap` | `i` (0–48) | `8` | Space between columns and between stacked windows, in logical px |
+| `margin` | `i` (0–100) | `20` | Space between a focused column and the screen edge, where the next window peeks in, in logical px; `0` lays columns flush |
 | `width-presets` | `ad` | `[0.3333333333, 0.5, 0.6666666667]` | Widths Super+R steps through, as fractions of the work area: 2 to 6 entries, each in [0.1, 1.0], strictly increasing (anything else is logged once and the defaults are used) |
 | `default-width` | `d` | `0.5` | Width of a new column, snapped to the nearest preset |
 | `animate` | `b` | `true` | Layout animations, also off when `enable-animations` is |
 | `focus-ring` | `b` | `true` | Ring in the accent colour around the focused tiled window |
+| `edge-preview` | `b` | `true` | A thumbnail of the hidden window when the pointer rests at a screen edge |
 | `app-rules` | `a(sbdb)` | `[]` | Per-app rules: (app id, float, initial width, own column). The initial width applies when a window first joins a strip. Width `0` is the default, `1` full width, anything else snaps to a preset. The id matches the GTK application id, the sandboxed app id or WM_CLASS, case-insensitively; the first match wins |
 
 ## Panel indicator
@@ -69,7 +71,7 @@ clash left. Toggle-full and barf avoid Super+F (picture-in-picture) and Super+O
 A Wingpanel indicator whose icon shows tiling on, off for this workspace, or
 off. Its popover has switches for **Tiling** (`enabled`), **Tile this
 workspace** and **Float "<window>"** (both over D-Bus, below), a **Gap**
-slider, an **Animate** switch, a **Focus ring** switch, a **Shortcuts** list, **Add rule for
+slider, a **Margin** slider, an **Animate** switch, a **Focus ring** switch, a **Shortcuts** list, **Add rule for
 "<app>"…** (opens the rules page with that app) and **Tiling Settings…**. When
 the plugin is not running, the live switches are insensitive with "Tiling
 plugin not running — log out and back in"; the settings controls still work.
@@ -79,8 +81,8 @@ plugin not running — log out and back in"; the settings controls still work.
 **Tiling** in System Settings (Personal; `settings://paper`, also
 `settings://paper/rules` and `settings://paper/shortcuts`):
 
-- **Layout:** enabled, gap, the width presets (refuses an invalid list), the
-  default width, animate, focus ring.
+- **Layout:** enabled, gap, margin, the width presets (refuses an invalid list), the
+  default width, animate, focus ring, edge previews.
 - **App Rules:** float, initial width (when a window first joins a strip) and
   own column per app; add from the running apps or by id. A rule left at all
   defaults is removed.

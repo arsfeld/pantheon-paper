@@ -213,6 +213,7 @@ namespace Paper {
 
         private void refresh_params () {
             @params.gap = config.gap;
+            @params.margin = config.margin;
             @params.presets = presets_or_default (config.presets);
             @params.default_preset = nearest_preset (@params.presets, config.default_width);
         }
@@ -226,6 +227,15 @@ namespace Paper {
             if (key == "focus-ring") {
                 refresh_ring ();
                 return;
+            }
+            if (key == "edge-preview") {
+                return;
+            }
+            if (key == "margin") {
+                // Keep each focused column between the new margin lines.
+                foreach (var entry in strips.entries) {
+                    scroll_to_focus (entry.value, work_area_of (entry.key), this);
+                }
             }
             if (key == "app-rules") {
                 // A rule can float or unfloat windows already open.

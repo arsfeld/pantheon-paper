@@ -153,6 +153,8 @@ namespace Paper {
          */
         private void add_settings_steps () {
             add ("gap-24", () => settings ()?.set_int ("gap", 24));
+            add ("margin-60", () => settings ()?.set_int ("margin", 60));
+            add ("margin-20", () => settings ()?.set_int ("margin", 20));
             add ("presets-quarters", () => settings ()?.set_value ("width-presets", new Variant.array (VariantType.DOUBLE, {
                 new Variant.double (0.25), new Variant.double (0.5), new Variant.double (0.75),
             })));
