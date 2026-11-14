@@ -161,6 +161,15 @@ namespace Paper {
             add ("bad-presets", () => settings ()?.set_value ("width-presets", new Variant.array (VariantType.DOUBLE, {
                 new Variant.double (0.9), new Variant.double (0.1),
             })));
+            // `nan` is valid GVariant text, and every comparison with it is false.
+            add ("bad-presets-nan", () => settings ()?.set_value ("width-presets", new Variant.array (VariantType.DOUBLE, {
+                new Variant.double (0.3), new Variant.double (double.NAN),
+            })));
+            add ("default-width-nan", () => {
+                settings ()?.set_double ("default-width", double.NAN);
+                open_window ();
+            });
+            add ("settle", () => {});
             add ("default-width-third", () => {
                 settings ()?.set_double ("default-width", 1.0 / 3.0);
                 open_window ();

@@ -143,6 +143,7 @@ void main (string[] args) {
 
         assert (!model.add (0.05));
         assert (!model.add (1.2));
+        assert (!model.add (double.NAN));
         assert (!model.add (0.5));
         // Within half a percent is the same entry as far as the editor shows.
         assert (!model.add (0.334));
@@ -179,6 +180,17 @@ void main (string[] args) {
         assert (!model.remove (0));
         assert (settings.get_double ("default-width") == 0.5);
         assert (model.presets ().length == 2);
+    });
+
+    Test.add_func ("/plug/presets_nan_default_width", () => {
+        var settings = fresh_settings ();
+        var model = new PresetsModel (settings);
+        // `nan` is valid GVariant text for a double: the editor still shows a
+        // listed preset, and its next write replaces the NaN with one.
+        settings.set_double ("default-width", double.NAN);
+        assert (model.default_index () == 1);
+        assert (model.add (0.25));
+        assert (settings.get_double ("default-width") == 0.5);
     });
 
     Test.run ();

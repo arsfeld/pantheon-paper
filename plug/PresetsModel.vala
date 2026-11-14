@@ -40,7 +40,7 @@ namespace Paper {
 
         /** Add `fraction` in its sorted place; false if refused. */
         public bool add (double fraction) {
-            if (values.length >= MAX || fraction < 0.1 || fraction > 1.0) {
+            if (values.length >= MAX || !(fraction >= 0.1 && fraction <= 1.0)) {
                 return false;
             }
             foreach (var v in values) {

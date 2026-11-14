@@ -39,11 +39,16 @@ void main (string[] args) {
         assert (!presets_valid ({ 0.6, 0.4 }));
         assert (!presets_valid ({ 0.05, 0.5 }));
         assert (presets_valid ({ 0.5, 1.0 }));
+        // Every comparison with NaN is false: it must fail, not slip through.
+        assert (!presets_valid ({ 0.3, double.NAN }));
+        assert (!presets_valid ({ double.NAN, 0.5 }));
+        assert (!presets_valid ({ 0.3, double.NAN, 0.9 }));
     });
 
     Test.add_func ("/presets/invalid_falls_back", () => {
         assert (same (presets_or_default ({}), DEFAULT_PRESETS));
         assert (same (presets_or_default ({ 0.25, 0.75 }), { 0.25, 0.75 }));
+        assert (same (presets_or_default ({ 0.3, double.NAN }), DEFAULT_PRESETS));
     });
 
     Test.add_func ("/presets/nearest", () => {
@@ -51,6 +56,9 @@ void main (string[] args) {
         assert (nearest_preset (DEFAULT_PRESETS, 0.9) == 2);
         assert (nearest_preset (DEFAULT_PRESETS, 0.0) == 0);
         assert (nearest_preset (DEFAULT_PRESETS, 0.41666) == 0);
+        // A NaN default-width reads as the schema default, 0.5.
+        assert (nearest_preset (DEFAULT_PRESETS, double.NAN) == 1);
+        assert (nearest_preset ({ 0.25, 0.75, 1.0 }, double.NAN) == 0);
     });
 
     Test.add_func ("/rules/roundtrip", () => {
