@@ -276,13 +276,22 @@ namespace Paper {
         }
 
         /**
-         * The last focused normal window, still tracked and still normal; null
-         * if there is none. Re-checked here as well as on change: Wingpanel's
-         * window first takes focus as NORMAL and becomes a DOCK later.
+         * The last focused normal window, still tracked, still normal and on
+         * the active workspace (or on all of them); null if there is none.
+         * Re-checked here as well as on change: Wingpanel's window first takes
+         * focus as NORMAL and becomes a DOCK later. On a workspace the user
+         * has just switched to, empty or not yet clicked, the window left
+         * behind is not offered: floating it would change nothing visible.
+         * `state_changed` fires on every workspace switch and when the window
+         * itself changes workspace, so the bus re-reads this.
          */
         public Meta.Window? focused_window () {
             var w = focus.last == 0 ? null : window_for (focus.last);
-            return w != null && is_normal (w) ? w : null;
+            if (w == null || !is_normal (w)) {
+                return null;
+            }
+            var active = display.get_workspace_manager ().get_active_workspace ();
+            return w.is_on_all_workspaces () || w.get_workspace () == active ? w : null;
         }
 
         /**
@@ -544,6 +553,9 @@ namespace Paper {
             ids.add (w.workspace_changed.connect (() => {
                 if (adopted.contains (id)) {
                     reevaluate (w, Reason.WORKSPACE);
+                }
+                if (focus.last == id) {
+                    state_changed (); // focused_window () depends on its workspace
                 }
             }));
             ids.add (w.notify["fullscreen"].connect (() => reevaluate (w, Reason.FULLSCREEN)));
