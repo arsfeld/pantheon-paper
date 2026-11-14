@@ -3,10 +3,17 @@ Section: x11
 Priority: optional
 Maintainer: Alexandre Rosenfeld <alex@rosenfeld.one>
 Build-Depends: debhelper-compat (= 13),
+               libadwaita-1-dev,
                libgala-dev (>= 8.6),
                libgee-0.8-dev,
                libglib2.0-dev,
+               libgranite-7-dev,
+               libgranite-dev,
+               libgtk-3-dev,
+               libgtk-4-dev,
                libmutter-14-dev,
+               libswitchboard-3-dev,
+               libwingpanel-dev,
                meson,
                pkgconf,
                valac
@@ -18,12 +25,20 @@ Rules-Requires-Root: no
 
 Package: pantheon-paper
 Architecture: any
-Depends: gala (>= 8.6), gala (<< 8.7), ${misc:Depends}, ${shlibs:Depends}
+Depends: gala (>= 8.6),
+         gala (<< 8.7),
+         io.elementary.settings,
+         wingpanel,
+         ${misc:Depends}, ${shlibs:Depends}
 Description: PaperWM-style scrolling tiling for Pantheon
  A Gala plugin: each workspace on the primary monitor becomes a horizontal
  strip of columns that scrolls to follow focus, keeping Wingpanel, the dock
  and the multitasking view. Super+arrows move focus, Super+Shift+arrows move
  windows, Super+R cycles a column's width.
+ .
+ A Wingpanel indicator toggles tiling for the workspace and the focused
+ window, and a "Tiling" page in System Settings (Personal) sets the gap,
+ column widths, per-app rules and shows the shortcuts.
  .
  It moves some of Pantheon's default keys to make room: workspace switching
  goes to Ctrl+Super+Left/Right (in place of half-screen tiling, which is

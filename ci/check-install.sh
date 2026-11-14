@@ -1,6 +1,6 @@
 #!/bin/sh
 # Installs dist/*.deb in elementary OS 8 beside Pantheon's own settings, then
-# checks that the plugin sits where gala loads plugins and links, that its
+# checks that the plugin, the Wingpanel indicator and the Switchboard plug sit where gala loads plugins and links, that its
 # schema is compiled in, that none of its keys clash with Pantheon's as
 # installed (tools/keys-check.py), and that elementary's own gala loads it and
 # keeps running: a plugin that crashes on load ends the user's session.
@@ -13,6 +13,12 @@ apt-get install -y -qq --no-install-recommends elementary-default-settings pytho
 plugin=/usr/lib/x86_64-linux-gnu/gala/plugins/libgala-paper.so
 test -f "$plugin"
 if ldd "$plugin" | grep 'not found'; then exit 1; fi
+for lib in /usr/lib/x86_64-linux-gnu/wingpanel/libpaper-indicator.so \
+  /usr/lib/x86_64-linux-gnu/switchboard-3/personal/libpaper-plug.so; do
+  test -f "$lib"
+  if ldd "$lib" | grep 'not found'; then exit 1; fi
+done
+gsettings list-keys io.github.arsfeld.paper | grep -qx width-presets
 gsettings list-keys io.github.arsfeld.paper.keybindings | grep -qx focus-left
 test "$(XDG_CURRENT_DESKTOP=Pantheon gsettings get org.gnome.mutter edge-tiling)" = false
 XDG_CURRENT_DESKTOP=Pantheon gsettings list-recursively | python3 tools/keys-check.py
