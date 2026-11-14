@@ -1,4 +1,5 @@
 common_sources = files(
+    'ActionNames.vala',
     'AppEntry.vala',
     'Presets.vala',
     'Rules.vala',

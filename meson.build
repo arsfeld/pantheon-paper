@@ -10,7 +10,6 @@ add_project_arguments('-DG_LOG_DOMAIN="pantheon-paper"', language: 'c')
 add_project_arguments('--vapidir', meson.current_source_dir() / 'vapi', language: 'vala')
 
 gnome = import('gnome')
-fs = import('fs')
 
 core_deps = [
     dependency('glib-2.0'),
@@ -89,11 +88,11 @@ install_data(
 gnome.post_install(glib_compile_schemas: true)
 
 # The indicator and the plug read the schemas installed above, so they build
-# with or without the plugin. Their directories arrive in later commits.
-if get_option('indicator') and fs.is_dir('indicator')
+# with or without the plugin.
+if get_option('indicator')
     subdir('indicator')
 endif
-if get_option('plug') and fs.is_dir('plug')
+if get_option('plug')
     subdir('plug')
 endif
 

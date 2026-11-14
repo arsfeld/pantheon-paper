@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- A stand-in for another program's keybindings, for /plug/key_owners. -->
+<schemalist>
+  <schema id="io.github.arsfeld.paper.test" path="/io/github/arsfeld/paper/test/">
+    <key name="x" type="as">
+      <default><![CDATA[['<Super>Left']]]></default>
+    </key>
+    <key name="y" type="as">
+      <default><![CDATA[['<Control><Alt>t', 'a']]]></default>
+    </key>
+    <key name="z" type="s">
+      <default>'&lt;Super&gt;Left'</default>
+    </key>
+  </schema>
+</schemalist>

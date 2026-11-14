@@ -1,17 +1,10 @@
 namespace Paper {
     /**
-     * The popover's Shortcuts page: every action with its current
-     * accelerators, read from io.github.arsfeld.paper.keybindings and
-     * formatted by granite. Read only; the plug edits them.
+     * The popover's Shortcuts page: every action in ACTION_NAMES order with
+     * its current accelerators, read from io.github.arsfeld.paper.keybindings
+     * and formatted by granite. Read only; the plug edits them.
      */
     public class ShortcutsView : Gtk.Box {
-        /** Actions.NAMES in src/Actions.vala; copied, the indicator does not link the plugin. */
-        public const string[] NAMES = {
-            "focus-left", "focus-right", "focus-up", "focus-down",
-            "move-left", "move-right", "move-up", "move-down",
-            "cycle-width", "toggle-full", "slurp", "barf", "center", "toggle-float",
-        };
-
         private Settings? keys;
         private Gtk.Grid grid;
 
@@ -59,7 +52,7 @@ namespace Paper {
             }
             var schema = keys.settings_schema;
             int row = 0;
-            foreach (unowned string name in NAMES) {
+            foreach (unowned string name in ACTION_NAMES) {
                 if (!schema.has_key (name)) {
                     continue;
                 }

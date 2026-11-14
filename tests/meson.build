@@ -9,9 +9,9 @@ if compile_schemas.found()
     test('schemas', compile_schemas, args: ['--strict', '--dry-run', meson.project_source_root() / 'data'])
 endif
 
-# The indicator's model against a fake proxy and GSettings' memory backend,
+# The indicator's and the plug's models run against GSettings' memory backend,
 # reading the schemas compiled into this build directory.
-if is_variable('indicator_model_sources')
+if is_variable('indicator_model_sources') or is_variable('plug_model_sources')
     test_schemas = custom_target(
         'test-schemas',
         input: files(
@@ -21,6 +21,10 @@ if is_variable('indicator_model_sources')
         output: 'gschemas.compiled',
         command: [find_program('glib-compile-schemas'), '--strict', '--targetdir', '@OUTDIR@', meson.project_source_root() / 'data'],
     )
+endif
+
+# The indicator's model, with a fake proxy.
+if is_variable('indicator_model_sources')
     test('indicator-model', executable(
             'test-indicator-model',
             common_sources + proxy_sources + indicator_model_sources + files('test_indicator_model.vala'),
@@ -28,5 +32,23 @@ if is_variable('indicator_model_sources')
         ),
         depends: test_schemas,
         env: ['GSETTINGS_BACKEND=memory', 'GSETTINGS_SCHEMA_DIR=' + meson.current_build_dir()],
+    )
+endif
+
+# The plug's models (rules, presets, key owners), plus a test schema layered
+# over the plugin's for the key-owner scan.
+if is_variable('plug_model_sources')
+    subdir('schemas')
+    test('plug-models', executable(
+            'test-plug-models',
+            common_sources + plug_model_sources + files('test_plug_models.vala'),
+            dependencies: core_deps + [dependency('gio-2.0')],
+        ),
+        depends: [test_schemas, plug_test_schemas],
+        env: [
+            'GSETTINGS_BACKEND=memory',
+            'GSETTINGS_SCHEMA_DIR=' + meson.current_build_dir(),
+            'PAPER_TEST_SCHEMA_DIR=' + plug_test_schema_dir,
+        ],
     )
 endif

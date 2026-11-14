@@ -5,13 +5,6 @@ namespace Paper {
      * what the keys do.
      */
     public class Actions : Object {
-        /** Every command, in the order of the spec's key table and the gschema. */
-        public const string[] NAMES = {
-            "focus-left", "focus-right", "focus-up", "focus-down",
-            "move-left", "move-right", "move-up", "move-down",
-            "cycle-width", "toggle-full", "slurp", "barf", "center", "toggle-float",
-        };
-
         private Controller c;
         private unowned Meta.Display display;
 
@@ -94,7 +87,7 @@ namespace Paper {
                 return;
             }
             settings = new Settings (SCHEMA);
-            foreach (var name in Actions.NAMES) {
+            foreach (var name in ACTION_NAMES) {
                 display.add_keybinding (name, settings, Meta.KeyBindingFlags.NONE, (d, w, e, binding) => {
                     this.actions.run (binding.get_name ());
                 });
@@ -105,7 +98,7 @@ namespace Paper {
             if (settings == null) {
                 return;
             }
-            foreach (var name in Actions.NAMES) {
+            foreach (var name in ACTION_NAMES) {
                 display.remove_keybinding (name);
             }
         }
