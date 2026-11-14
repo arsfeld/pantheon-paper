@@ -426,29 +426,55 @@ namespace Paper {
                 if (w == null) {
                     continue;
                 }
-                // Stop any animation, so the window shows where its frame is.
-                applier.forget (p.id);
-                var actor = w.get_compositor_private () as Clutter.Actor;
-                if (actor != null) {
-                    actor.set_translation (0, 0, 0);
-                }
-                if (!p.parked || p.id == grabbed) {
-                    continue;
-                }
-                var f = w.get_frame_rect ();
-                int x = f.x;
-                if (x + f.width > work.x + work.width) {
-                    x = work.x + work.width - f.width;
-                }
-                if (x < work.x) {
-                    x = work.x;
-                }
-                if (x != f.x) {
-                    // A user op, as the Applier moves windows.
-                    w.move_resize_frame (true, x, f.y, f.width, f.height);
+                settle (w);
+                if (p.parked && p.id != grabbed) {
+                    move_fully_on_screen (w, work);
                 }
             }
             refresh_ring ();
+        }
+
+        /** Stop any animation, so the window shows where its frame is. */
+        private void settle (Meta.Window w) {
+            applier.forget (w.get_id ());
+            var actor = w.get_compositor_private () as Clutter.Actor;
+            if (actor != null) {
+                actor.set_translation (0, 0, 0);
+            }
+        }
+
+        /**
+         * A parked window leaving its strip (released, or floated) moves just
+         * far enough inside the work area on its side to be fully on screen;
+         * otherwise it would stay stranded as a 75 px sliver at the edge.
+         */
+        private void move_fully_on_screen (Meta.Window w, Rect work) {
+            var f = w.get_frame_rect ();
+            int x = f.x;
+            if (x + f.width > work.x + work.width) {
+                x = work.x + work.width - f.width;
+            }
+            if (x < work.x) {
+                x = work.x;
+            }
+            if (x != f.x) {
+                // A user op, as the Applier moves windows.
+                w.move_resize_frame (true, x, f.y, f.width, f.height);
+            }
+        }
+
+        /** Whether the layout parks the window, a sliver at an edge of its strip's work area. */
+        private bool parked_in (Strip strip, Meta.Workspace ws, uint64 id) {
+            bool wall_left, wall_right;
+            walls (out wall_left, out wall_right);
+            // A local: Vala frees a temporary result before a foreach over its field.
+            var result = layout (strip, work_area_of (ws), this, wall_left, wall_right);
+            foreach (var p in result.windows) {
+                if (p.id == id) {
+                    return p.parked;
+                }
+            }
+            return false;
         }
 
         /**
@@ -665,15 +691,25 @@ namespace Paper {
                 return;
             }
             if (current != null) {
-                if (reason == Reason.FULLSCREEN) {
-                    // The strip's own workspace: Gala may already have moved the window.
-                    foreach (var entry in strips.entries) {
-                        if (entry.value == current) {
-                            slots[id] = new Slot (entry.key, current, id);
-                        }
+                // The strip's own workspace: Gala may already have moved the window.
+                Meta.Workspace? strip_ws = null;
+                foreach (var entry in strips.entries) {
+                    if (entry.value == current) {
+                        strip_ws = entry.key;
                     }
                 }
+                if (reason == Reason.FULLSCREEN && strip_ws != null) {
+                    slots[id] = new Slot (strip_ws, current, id);
+                }
+                // Floated (a toggle, FocusedFloating or an app rule) while
+                // parked: freed in place it would stay a sliver at the edge.
+                bool unpark = target == null && reason == Reason.FLOAT && strip_ws != null
+                    && id != grabbed && parked_in (current, strip_ws, id);
                 current.remove (id);
+                if (unpark) {
+                    settle (w);
+                    move_fully_on_screen (w, work_area_of (strip_ws));
+                }
             }
             if (target != null) {
                 asked_size.unset (id);

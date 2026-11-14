@@ -15,7 +15,7 @@ namespace Paper {
      * they write io.github.arsfeld.paper (and one keybinding) from inside Gala,
      * whose memory GSettings backend `gsettings set` cannot reach; with
      * PAPER_DEMO_TOGGLE=1 they switch tiling off and on, globally and for the
-     * active workspace. Never injects input.
+     * active workspace, then float a parked window. Never injects input.
      */
     public class Demo : Object {
         public delegate void Step ();
@@ -224,6 +224,36 @@ namespace Paper {
             add ("open-on-ws-off", () => open_window ());
             add ("ws-on", () => set_ws_tiled (true));
             add ("settle", () => {});
+            add ("float-parked", () => float_parked ());
+            add ("settle", () => {});
+        }
+
+        /**
+         * Float a parked window (a sliver at an edge), as an app rule or the
+         * D-Bus toggle would: it must end fully inside the work area, which
+         * the `free:` part of the next `at` line shows.
+         */
+        private void float_parked () {
+            var s = c.current_strip ();
+            if (s == null) {
+                return;
+            }
+            var result = c.layout_of (s);
+            foreach (var p in result.windows) {
+                var w = c.window_for (p.id);
+                if (p.parked && w != null) {
+                    var f = w.get_frame_rect ();
+                    message ("paper-demo: floating parked %s at x=%d w=%d", w.get_title () ?? "?", f.x, f.width);
+                    c.toggle_float (w);
+                    f = w.get_frame_rect ();
+                    var work = c.work_area ();
+                    message ("paper-demo: floated %s at x=%d w=%d work=%d..%d on_screen=%s", w.get_title () ?? "?",
+                        f.x, f.width, work.x, work.x + work.width,
+                        (f.x >= work.x && f.x + f.width <= work.x + work.width).to_string ());
+                    return;
+                }
+            }
+            message ("paper-demo: no parked window");
         }
 
         private void set_ws_tiled (bool on) {
