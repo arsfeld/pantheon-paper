@@ -8,7 +8,10 @@ namespace Paper {
      *
      * It follows the pointer through the cursor tracker's
      * `position-invalidated`, which fires on every pointer motion whatever
-     * the pointer is over, and consumes nothing. Only edges that end the
+     * the pointer is over, and consumes nothing. Under X11 Mutter reports
+     * pointer motion there only while something asks it to track the
+     * position, which no binding exposes, so an X11 session (elementary's
+     * Classic one) polls instead, every POLL_MS. Only edges that end the
      * screen count: where another monitor adjoins, the pointer crosses over.
      */
     public class EdgePreview : Object {
@@ -16,6 +19,7 @@ namespace Paper {
         private const int REACH = 2;
         private const uint DELAY_MS = 100;
         private const float SCALE = 0.15f;
+        private const uint POLL_MS = 100;
 
         private Gala.WindowManager wm;
         private weak Controller c;
@@ -25,6 +29,7 @@ namespace Paper {
         private ulong grab_end_handler = 0;
         private bool grabbing = false;
         private uint delay_source = 0;
+        private uint poll_source = 0;
 
         /** What the delay is waiting to show, or what is shown. */
         private Side side = Side.RIGHT;
@@ -38,6 +43,12 @@ namespace Paper {
             this.c = c;
             display = wm.get_display ();
             motion_handler = cursor_tracker (display).position_invalidated.connect (refresh);
+            if (!Meta.Util.is_wayland_compositor ()) {
+                poll_source = Timeout.add (POLL_MS, () => {
+                    refresh ();
+                    return Source.CONTINUE;
+                });
+            }
             grab_begin_handler = display.grab_op_begin.connect (() => {
                 grabbing = true;
                 hide ();
@@ -50,6 +61,10 @@ namespace Paper {
 
         public void destroy () {
             hide ();
+            if (poll_source != 0) {
+                Source.remove (poll_source);
+                poll_source = 0;
+            }
             if (motion_handler != 0) {
                 cursor_tracker (display).disconnect (motion_handler);
                 motion_handler = 0;
@@ -133,7 +148,17 @@ namespace Paper {
         }
 
         private void show () {
-            source = target == null ? null : target.get_compositor_private () as Clutter.Actor;
+            // Anything may have changed in the delay (tiling switched off, the
+            // multitasking view opened) without a pointer motion to report it.
+            Graphene.Point p;
+            Clutter.ModifierType mods;
+            pointer (display, out p, out mods);
+            Side at;
+            if (wanted ((int) p.x, (int) p.y, out at) != target || at != side) {
+                target = null;
+                return;
+            }
+            source = target.get_compositor_private () as Clutter.Actor;
             if (source == null) {
                 target = null;
                 return;
@@ -145,9 +170,6 @@ namespace Paper {
             wm.top_window_group.add_child (clone);
             // The window may close while previewed: Mutter destroys its actor after `unmanaging`.
             destroy_handler = source.destroy.connect (hide);
-            Graphene.Point p;
-            Clutter.ModifierType mods;
-            pointer (display, out p, out mods);
             place ((int) p.y);
             if (c.animations_enabled ()) {
                 clone.opacity = 0;

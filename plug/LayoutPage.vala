@@ -111,41 +111,23 @@ namespace Paper {
         }
 
         /**
-
          * A spin button for an int key. A spin button's value is a double: copied
-
          * by hand rather than trusting GSettings' numeric mapping.
-
          */
-
         private Gtk.SpinButton int_spin (string key, int max) {
-
             var spin = new Gtk.SpinButton.with_range (0, max, 1) {
-
                 valign = Gtk.Align.CENTER,
-
                 value = settings.get_int (key)
-
             };
-
             spin.value_changed.connect (() => {
-
                 var v = (int) spin.value;
-
                 if (settings.get_int (key) != v) {
-
                     settings.set_int (key, v);
-
                 }
-
             });
-
             settings.changed[key].connect (() => spin.value = settings.get_int (key));
-
             return spin;
-
         }
-
 
         private static void attach_row (Gtk.Grid grid, int row, string title, string subtitle, Gtk.Widget control) {
             var label = new Gtk.Label (title) {

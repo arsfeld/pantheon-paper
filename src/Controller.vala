@@ -450,6 +450,7 @@ namespace Paper {
                 }
             }
             refresh_ring ();
+            preview.refresh ();
         }
 
         /** Stop any animation, so the window shows where its frame is. */

@@ -104,49 +104,27 @@ namespace Paper {
         }
 
         /** A labelled slider bound to an int key, 0 to `max`. */
-
         private Gtk.Box scale_row (string label, string key, int max) {
-
             var name = new Gtk.Label (label) {
-
                 halign = Gtk.Align.START,
-
                 margin_start = 12
-
             };
-
             var scale = new Gtk.Scale.with_range (Gtk.Orientation.HORIZONTAL, 0, max, 1) {
-
                 hexpand = true,
-
                 digits = 0,
-
                 draw_value = true,
-
                 value_pos = Gtk.PositionType.RIGHT,
-
                 margin_end = 12
-
             };
-
             model.settings.bind (key, scale.adjustment, "value", SettingsBindFlags.DEFAULT);
-
             var row = new Gtk.Box (Gtk.Orientation.HORIZONTAL, 12) {
-
                 margin_top = 3,
-
                 margin_bottom = 3
-
             };
-
             row.add (name);
-
             row.add (scale);
-
             return row;
-
         }
-
 
         private static Gtk.Separator separator () {
             return new Gtk.Separator (Gtk.Orientation.HORIZONTAL) {
