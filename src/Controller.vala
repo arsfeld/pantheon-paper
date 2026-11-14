@@ -509,6 +509,8 @@ namespace Paper {
                 return;
             }
             var strip = strip_for (ws);
+            // At the default width, rules or not: these windows were in a
+            // strip before, and a rule's width is only for joining it first.
             foreach (var id in order_by_x (ids, xs)) {
                 strip.append (id);
             }
@@ -723,8 +725,13 @@ namespace Paper {
                 } else if (reason == Reason.WORKSPACE) {
                     target.append (id);
                 } else {
-                    // A rule's initial width applies only to a new window (or one
-                    // that only now became normal); later re-entries keep the width
+                    // A rule's initial width applies when a window first joins a
+                    // strip: a new window, or one that only now became normal
+                    // (KIND). The latter is in practice a window joining for the
+                    // first time (shown as a dialog or skip-taskbar, then turned
+                    // into a toplevel), so its rule applies as to a new one; a
+                    // window flipping kind back and forth gets the rule's width
+                    // again, which is accepted. Other re-entries keep the width
                     // their saved slot or the default gives.
                     var rule = reason == Reason.CREATED || reason == Reason.KIND ? rule_for (w) : null;
                     double width = rule != null ? rule.width : 0.0;

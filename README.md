@@ -61,7 +61,7 @@ clash left. Toggle-full and barf avoid Super+F (picture-in-picture) and Super+O
 | `width-presets` | `ad` | `[0.3333333333, 0.5, 0.6666666667]` | Widths Super+R steps through, as fractions of the work area: 2 to 6 entries, each in [0.1, 1.0], strictly increasing (anything else is logged once and the defaults are used) |
 | `default-width` | `d` | `0.5` | Width of a new column, snapped to the nearest preset |
 | `animate` | `b` | `true` | Layout animations, also off when `enable-animations` is |
-| `app-rules` | `a(sbdb)` | `[]` | Per-app rules: (app id, float, initial width, own column). Width `0` is the default, `1` full width, anything else snaps to a preset. The id matches the GTK application id, the sandboxed app id or WM_CLASS, case-insensitively; the first match wins |
+| `app-rules` | `a(sbdb)` | `[]` | Per-app rules: (app id, float, initial width, own column). The initial width applies when a window first joins a strip. Width `0` is the default, `1` full width, anything else snaps to a preset. The id matches the GTK application id, the sandboxed app id or WM_CLASS, case-insensitively; the first match wins |
 
 ## Panel indicator
 
@@ -80,8 +80,9 @@ plugin not running — log out and back in"; the settings controls still work.
 
 - **Layout:** enabled, gap, the width presets (refuses an invalid list), the
   default width, animate.
-- **App Rules:** float, initial width and own column per app; add from the
-  running apps or by id. A rule left at all defaults is removed.
+- **App Rules:** float, initial width (when a window first joins a strip) and
+  own column per app; add from the running apps or by id. A rule left at all
+  defaults is removed.
 - **Shortcuts:** click a row to capture a key (Escape cancels, Backspace
   clears). A clash names the other action and offers to replace it.
 
