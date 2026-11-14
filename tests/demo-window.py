@@ -2,7 +2,9 @@
 """A plain GTK 3 window for the PAPER_DEMO hook: titled `demo <n>`, with a big
 number and a colour per window, so screenshots show which window is where.
 With PAPER_DEMO_WIDE=<n>, window n refuses to be narrower than 1100 px; with
-PAPER_DEMO_FIXED=<n>, window n is not resizable. Its app id is
+PAPER_DEMO_FIXED=<n>, window n is not resizable; with PAPER_DEMO_UNDECORATED=<n>,
+window n asks for no decorations (Motif hints, as Steam's main window does,
+which matters under X11: see `adopt` in Controller.vala). Its app id is
 io.github.arsfeld.PaperDemo.
 
 With --popup it opens instead one small window with the POPUP_MENU type hint
@@ -51,6 +53,8 @@ if os.environ.get("PAPER_DEMO_WIDE") == n:
 win.add(label)
 if os.environ.get("PAPER_DEMO_FIXED") == n:
     win.set_resizable(False)
+if os.environ.get("PAPER_DEMO_UNDECORATED") == n:
+    win.set_decorated(False)
 win.connect("destroy", Gtk.main_quit)
 win.show_all()
 Gtk.main()

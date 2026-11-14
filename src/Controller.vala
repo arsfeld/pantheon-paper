@@ -35,6 +35,8 @@ namespace Paper {
         /** The last focused normal window, for the D-Bus interface. */
         private FocusTracker focus = new FocusTracker ();
         private Gee.HashSet<uint64?> adopted = new Gee.HashSet<uint64?> (id_hash, id_equal);
+        /** Each tracked window's actor `first-frame` handler, until it has fired. */
+        private Gee.HashMap<uint64?, ulong> first_frame = new Gee.HashMap<uint64?, ulong> (id_hash, id_equal);
         /**
          * Workspaces whose tiling is switched off for this session. Pantheon's
          * workspaces are dynamic, so there is nothing stable to save it against;
@@ -284,12 +286,11 @@ namespace Paper {
         }
 
         /**
-         * A window's type or taskbar state changed after it was shown. Steam's
-         * main window (steamwebhelper) is first shown as something not normal
-         * and turns NORMAL later, so it was never tiled until something else
-         * re-checked it; Wingpanel goes the other way, NORMAL to DOCK. Either
-         * way the strip is re-checked, and a window that stopped being normal
-         * can no longer be the focused one.
+         * A window's type or taskbar state changed after it was shown
+         * (Wingpanel's window goes from NORMAL to DOCK): the strip is
+         * re-checked, and a window that stopped being normal can no longer be
+         * the focused one. Steam's main window was once blamed on this; it is
+         * NORMAL from the start, and its trouble was `shown` (see `adopt_new`).
          */
         private void on_kind_changed (uint64 id) {
             var w = window_for (id);
@@ -521,12 +522,19 @@ namespace Paper {
             windows[id] = w;
             debug ("track %s", window_text (w));
             var ids = new Gee.ArrayList<ulong> ();
-            ids.add (w.shown.connect (() => {
-                debug ("shown %s adopted=%s", window_text (w), adopted.contains (id).to_string ());
-                if (adopted.add (id)) {
-                    reevaluate (w, Reason.CREATED);
-                }
-            }));
+            // A window is adopted (and tiled, if it belongs in a strip) the
+            // first time it is on screen. `shown` alone misses some: Mutter
+            // emits it only for a window that was hidden first, which every
+            // Wayland window is (until its first buffer) and so is a decorated
+            // X11 window (until its frame exists), but an undecorated X11
+            // window, Steam's main window among them, is showable at once and
+            // never gets `shown`. Its actor's first frame is drawn after it is
+            // shown and placed, for every kind of window.
+            ids.add (w.shown.connect (() => adopt_new (id, "shown")));
+            var actor = w.get_compositor_private () as Meta.WindowActor;
+            if (actor != null) {
+                first_frame[id] = actor.first_frame.connect (() => adopt_new (id, "first-frame"));
+            }
             // `unmanaging`, not `unmanaged`: while a window is unmanaged Mutter
             // focuses another one before `unmanaged` fires, and a relayout from
             // that focus change would move the half-destroyed window (SIGSEGV in
@@ -548,6 +556,30 @@ namespace Paper {
             handlers[id] = ids;
         }
 
+        /** The first time a window is on screen, by whichever signal says so first. */
+        private void adopt_new (uint64 id, string signal_name) {
+            var w = window_for (id);
+            if (w == null) {
+                return;
+            }
+            debug ("%s %s adopted=%s", signal_name, window_text (w), adopted.contains (id).to_string ());
+            drop_first_frame (id, w);
+            if (adopted.add (id)) {
+                reevaluate (w, Reason.CREATED);
+            }
+        }
+
+        private void drop_first_frame (uint64 id, Meta.Window? w) {
+            if (!first_frame.has_key (id)) {
+                return;
+            }
+            var actor = w == null ? null : w.get_compositor_private () as Clutter.Actor;
+            if (actor != null) {
+                SignalHandler.disconnect (actor, first_frame[id]);
+            }
+            first_frame.unset (id);
+        }
+
         private void untrack (uint64 id) {
             var w = window_for (id);
             applier.forget (id);
@@ -563,6 +595,7 @@ namespace Paper {
                 }
             }
             handlers.unset (id);
+            drop_first_frame (id, w);
             floats.forget (id);
             var had_focus = focus.last == id;
             focus.forget (id);
