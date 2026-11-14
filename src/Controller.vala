@@ -7,7 +7,8 @@ namespace Paper {
         WORKSPACE,
         MONITOR,
         TRANSIENT,
-        FLOAT
+        FLOAT,
+        KIND
     }
 
     /**
@@ -280,10 +281,23 @@ namespace Paper {
             return w != null && is_normal (w) ? w : null;
         }
 
-        /** A window that stopped being normal can no longer be the focused one. */
+        /**
+         * A window's type or taskbar state changed after it was shown. Steam's
+         * main window (steamwebhelper) is first shown as something not normal
+         * and turns NORMAL later, so it was never tiled until something else
+         * re-checked it; Wingpanel goes the other way, NORMAL to DOCK. Either
+         * way the strip is re-checked, and a window that stopped being normal
+         * can no longer be the focused one.
+         */
         private void on_kind_changed (uint64 id) {
             var w = window_for (id);
-            if (w == null || is_normal (w) || focus.last != id) {
+            if (w == null) {
+                return;
+            }
+            if (adopted.contains (id)) {
+                reevaluate (w, Reason.KIND);
+            }
+            if (is_normal (w) || focus.last != id) {
                 return;
             }
             focus.forget (id);
@@ -618,9 +632,10 @@ namespace Paper {
                 } else if (reason == Reason.WORKSPACE) {
                     target.append (id);
                 } else {
-                    // A rule's initial width applies only to a new window; later
-                    // re-entries keep the width their saved slot or the default gives.
-                    var rule = reason == Reason.CREATED ? rule_for (w) : null;
+                    // A rule's initial width applies only to a new window (or one
+                    // that only now became normal); later re-entries keep the width
+                    // their saved slot or the default gives.
+                    var rule = reason == Reason.CREATED || reason == Reason.KIND ? rule_for (w) : null;
                     double width = rule != null ? rule.width : 0.0;
                     int preset = width > 0.0 && width < 1.0 ? nearest_preset (@params.presets, width) : -1;
                     target.insert_after_focused (id, preset);
