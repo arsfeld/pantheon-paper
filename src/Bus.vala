@@ -1,10 +1,4 @@
 namespace Paper {
-    /** An app id and its display name, `(ss)` on the bus. */
-    public struct AppEntry {
-        public string id;
-        public string name;
-    }
-
     /**
      * `io.github.arsfeld.Paper` on the session bus, object
      * `/io/github/arsfeld/Paper`: live session state for the Wingpanel
