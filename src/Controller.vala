@@ -296,6 +296,7 @@ namespace Paper {
             if (w == null) {
                 return;
             }
+            debug ("kind %s adopted=%s", window_text (w), adopted.contains (id).to_string ());
             if (adopted.contains (id)) {
                 reevaluate (w, Reason.KIND);
             }
@@ -518,8 +519,10 @@ namespace Paper {
                 return;
             }
             windows[id] = w;
+            debug ("track %s", window_text (w));
             var ids = new Gee.ArrayList<ulong> ();
             ids.add (w.shown.connect (() => {
+                debug ("shown %s adopted=%s", window_text (w), adopted.contains (id).to_string ());
                 if (adopted.add (id)) {
                     reevaluate (w, Reason.CREATED);
                 }
@@ -606,9 +609,13 @@ namespace Paper {
             var current = strip_of (id);
             Strip? target = null;
             var ws = w.get_workspace ();
-            if (tiles (ws) && should_tile (facts_for (w))) {
+            var facts = facts_for (w);
+            if (tiles (ws) && should_tile (facts)) {
                 target = strip_for (ws);
             }
+            debug ("reevaluate %s reason=%s ws=%d tiles=%s %s: %s -> %s", window_text (w), reason.to_string (),
+                ws == null ? -1 : ws.index (), tiles (ws).to_string (), facts_text (facts),
+                current == null ? "free" : "strip", target == null ? "free" : "strip");
             if (current == target) {
                 return;
             }
@@ -869,6 +876,17 @@ namespace Paper {
                 text += " || free: " + string.joinv (" | ", free);
             }
             return text + " || ring: " + ring.describe ();
+        }
+
+        /** A window for the debug log (G_MESSAGES_DEBUG=pantheon-paper in Gala's environment). */
+        private static string window_text (Meta.Window w) {
+            return "%s \"%s\" type=%d".printf (w.get_id ().to_string (), w.get_title () ?? "?", (int) w.get_window_type ());
+        }
+
+        private static string facts_text (WindowFacts f) {
+            return "normal=%d transient=%d fullscreen=%d minimized=%d primary=%d all_ws=%d floating=%d rule_float=%d".printf (
+                (int) f.normal_type, (int) f.has_transient_parent, (int) f.fullscreen, (int) f.minimized,
+                (int) f.on_primary, (int) f.on_all_workspaces, (int) f.floating, (int) f.rule_float);
         }
 
         private static string frame_text (Meta.Window w, bool focused) {
