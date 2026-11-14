@@ -17,7 +17,10 @@ core_deps = [
     dependency('gee-0.8'),
     meson.get_compiler('c').find_library('m'),
 ]
-core_sources = files()
+# src/common/ is GLib/GObject/Gee only (no Gio, no Mutter), shared by the
+# plugin, the unit tests and the Wingpanel indicator and Switchboard plug.
+subdir('src/common')
+core_sources = common_sources
 subdir('src/core')
 
 # The plugin must be built against the mutter gala itself uses. mutter does
