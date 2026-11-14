@@ -182,5 +182,12 @@ void main (string[] args) {
         assert (s.scroll_x == -860);
     });
 
+    Test.add_func ("/layout/gap_param", () => {
+        var s = strip_of (2);
+        s.params.gap = 20;
+        var r = layout (s, WORK, new NoHints ());
+        assert (r.columns[1].x - (r.columns[0].x + r.columns[0].width) == 20);
+    });
+
     Test.run ();
 }

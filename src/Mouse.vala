@@ -172,7 +172,7 @@ namespace Paper {
             int n = col.windows.size;
             if (n > 1) {
                 int row = col.windows.index_of (id);
-                int available = work.height - GAP * (n - 1);
+                int available = work.height - c.params.gap * (n - 1);
                 int h = frame.height.clamp (1, available - (n - 1));
                 double others = 1.0 - col.shares[row];
                 var heights = new int[n];
@@ -244,8 +244,8 @@ namespace Paper {
                 area = r.columns[t.column];
             } else {
                 // A bar on the boundary the new column would open at.
-                int edge = t.column < r.columns.size ? r.columns[t.column].x - GAP / 2
-                    : r.columns[t.column - 1].x + r.columns[t.column - 1].width + GAP / 2;
+                int edge = t.column < r.columns.size ? r.columns[t.column].x - c.params.gap / 2
+                    : r.columns[t.column - 1].x + r.columns[t.column - 1].width + c.params.gap / 2;
                 var work = c.work_area ();
                 area = Rect (edge - 8, work.y, 16, work.height);
             }

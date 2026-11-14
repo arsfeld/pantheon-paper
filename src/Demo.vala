@@ -62,7 +62,7 @@ namespace Paper {
                 });
                 add ("drop-gap", () => {
                     var r = column_rect (0);
-                    this.mouse.drop (by_title ("demo 1"), r.x + r.width + GAP / 2, r.y + 100);
+                    this.mouse.drop (by_title ("demo 1"), r.x + r.width + c.params.gap / 2, r.y + 100);
                 });
                 add ("pan", () => this.mouse.pan_by (600, true));
                 add ("resize-width", () => {

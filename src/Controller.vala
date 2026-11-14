@@ -20,6 +20,8 @@ namespace Paper {
      */
     public class Controller : Object, WidthHints {
         public Gala.WindowManager wm { get; construct; }
+        /** Gap and width presets, shared by every strip. */
+        public Params @params = new Params ();
 
         private unowned Meta.Display display;
         private Gee.HashMap<Meta.Workspace, Strip> strips = new Gee.HashMap<Meta.Workspace, Strip> ();
@@ -35,7 +37,7 @@ namespace Paper {
         private class Slot {
             public Meta.Workspace workspace;
             public int column;
-            public Preset preset;
+            public int preset;
             public int free_px;
             public bool full;
 
@@ -272,12 +274,13 @@ namespace Paper {
                 on_primary = w.get_monitor () == display.get_primary_monitor (),
                 on_all_workspaces = w.is_on_all_workspaces (),
                 floating = floating.contains (w.get_id ()),
+                rule_float = false,
             };
         }
 
         private Strip strip_for (Meta.Workspace ws) {
             if (!strips.has_key (ws)) {
-                strips[ws] = new Strip ();
+                strips[ws] = new Strip (@params);
             }
             return strips[ws];
         }
@@ -312,9 +315,8 @@ namespace Paper {
                 asked_size.unset (id);
                 if (slots.has_key (id) && slots[id].workspace == ws) {
                     var slot = slots[id];
-                    target.insert_at (id, slot.column);
+                    target.insert_at (id, slot.column, slot.preset);
                     var col = target.columns[target.column_of (id)];
-                    col.preset = slot.preset;
                     col.free_px = slot.free_px;
                     col.full = slot.full;
                     slots.unset (id);

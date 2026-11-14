@@ -9,6 +9,7 @@ WindowFacts normal () {
         on_primary = true,
         on_all_workspaces = false,
         floating = false,
+        rule_float = false,
     };
 }
 
@@ -44,6 +45,11 @@ void main (string[] args) {
     });
     Test.add_func ("/tiling/floating_toggle_floats", () => {
         var f = normal (); f.floating = true;
+        assert (!should_tile (f));
+    });
+
+    Test.add_func ("/tiling/rule_float", () => {
+        var f = normal (); f.rule_float = true;
         assert (!should_tile (f));
     });
 

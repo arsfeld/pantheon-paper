@@ -1,6 +1,4 @@
 namespace Paper {
-    /** Gap between columns and between stacked windows, in logical pixels. */
-    public const int GAP = 8;
     /**
      * How much of a parked column stays on screen. Mutter keeps 75 px of a
      * window moved as a user op on screen, so a smaller sliver would only

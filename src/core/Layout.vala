@@ -23,14 +23,14 @@ namespace Paper {
         public Gee.ArrayList<Rect?> columns = new Gee.ArrayList<Rect?> ();
     }
 
-    private int column_width (Column col, Rect work, WidthHints hints) {
+    private int column_width (Params p, Column col, Rect work, WidthHints hints) {
         int w;
         if (col.full) {
             w = work.width;
         } else if (col.free_px > 0) {
             w = col.free_px;
         } else {
-            w = col.preset.pixels (work.width);
+            w = p.pixels (col.preset, work.width);
         }
         foreach (var id in col.windows) {
             w = int.max (w, hints.min_width (id));
@@ -42,9 +42,9 @@ namespace Paper {
     private void column_span (Strip s, int index, Rect work, WidthHints hints, out int left, out int width) {
         left = 0;
         for (int i = 0; i < index; i++) {
-            left += column_width (s.columns[i], work, hints) + GAP;
+            left += column_width (s.params, s.columns[i], work, hints) + s.params.gap;
         }
-        width = column_width (s.columns[index], work, hints);
+        width = column_width (s.params, s.columns[index], work, hints);
     }
 
     private int total_width (Strip s, Rect work, WidthHints hints) {
@@ -66,9 +66,10 @@ namespace Paper {
      */
     public LayoutResult layout (Strip s, Rect work, WidthHints hints, bool wall_left = false, bool wall_right = false) {
         var result = new LayoutResult ();
+        int gap = s.params.gap;
         int left = 0;
         foreach (var col in s.columns) {
-            int w = column_width (col, work, hints);
+            int w = column_width (s.params, col, work, hints);
             int x = work.x + left - s.scroll_x;
             int right = work.x + work.width;
             int visible = int.min (x + w, right) - int.max (x, work.x);
@@ -86,7 +87,7 @@ namespace Paper {
             result.columns.add (Rect (x, work.y, w, work.height));
 
             int n = col.windows.size;
-            int available = work.height - GAP * (n - 1);
+            int available = work.height - gap * (n - 1);
             int y = work.y;
             for (int r = 0; r < n; r++) {
                 int h = r == n - 1
@@ -97,9 +98,9 @@ namespace Paper {
                     rect = Rect (x, y, w, h),
                     parked = parked,
                 });
-                y += h + GAP;
+                y += h + gap;
             }
-            left += w + GAP;
+            left += w + gap;
         }
         return result;
     }

@@ -1,31 +1,4 @@
 namespace Paper {
-    public enum Preset {
-        THIRD,
-        HALF,
-        TWO_THIRDS;
-
-        public double fraction () {
-            switch (this) {
-                case THIRD: return 1.0 / 3.0;
-                case TWO_THIRDS: return 2.0 / 3.0;
-                default: return 0.5;
-            }
-        }
-
-        public Preset next () {
-            switch (this) {
-                case THIRD: return HALF;
-                case HALF: return TWO_THIRDS;
-                default: return THIRD;
-            }
-        }
-
-        /** Column width in pixels for a work area this wide. */
-        public int pixels (int work_width) {
-            return (int) Math.round (work_width * fraction ()) - GAP;
-        }
-    }
-
     public enum DropKind {
         NONE,
         /** Into column `column`, at row `row`. */
@@ -42,7 +15,8 @@ namespace Paper {
     }
 
     public class Column : Object {
-        public Preset preset = Preset.HALF;
+        /** An index into Params.presets, clamped when used. */
+        public int preset = 1;
         /** A width set by a mouse resize; 0 means use the preset. */
         public int free_px = 0;
         public bool full = false;
@@ -52,7 +26,7 @@ namespace Paper {
         /** The row focus returns to when the column is focused again. */
         public int active_row = 0;
 
-        public Column.with (uint64 id, Preset preset = Preset.HALF) {
+        public Column.with (uint64 id, int preset) {
             this.preset = preset;
             windows.add (id);
             reset_shares ();
@@ -72,10 +46,22 @@ namespace Paper {
      * Pure: window ids only, no Mutter types.
      */
     public class Strip : Object {
+        public Params @params;
+        public SoloCheck solo;
         public Gee.ArrayList<Column> columns = new Gee.ArrayList<Column> ();
         public int scroll_x = 0;
         /** The focused window, or 0. */
         public uint64 focused = 0;
+
+        public Strip (Params @params = new Params (), SoloCheck solo = new NoSolo ()) {
+            this.@params = @params;
+            this.solo = solo;
+        }
+
+        /** A new column holding `id`; preset -1 means params.default_preset. */
+        private Column new_column (uint64 id, int preset = -1) {
+            return new Column.with (id, preset < 0 ? @params.default_preset : preset);
+        }
 
         public bool contains (uint64 id) {
             return column_of (id) >= 0;
@@ -99,28 +85,28 @@ namespace Paper {
             return focused == 0 ? -1 : column_of (focused);
         }
 
-        public void insert_after_focused (uint64 id) {
+        public void insert_after_focused (uint64 id, int preset = -1) {
             if (id == 0 || contains (id)) {
                 return;
             }
-            columns.insert (focused_column () + 1, new Column.with (id));
+            columns.insert (focused_column () + 1, new_column (id, preset));
             focused = id;
         }
 
         /** Insert as a new column at index `column` (clamped), and focus it. */
-        public void insert_at (uint64 id, int column) {
+        public void insert_at (uint64 id, int column, int preset = -1) {
             if (id == 0 || contains (id)) {
                 return;
             }
-            columns.insert (column.clamp (0, columns.size), new Column.with (id));
+            columns.insert (column.clamp (0, columns.size), new_column (id, preset));
             focused = id;
         }
 
-        public void append (uint64 id) {
+        public void append (uint64 id, int preset = -1) {
             if (id == 0 || contains (id)) {
                 return;
             }
-            columns.add (new Column.with (id));
+            columns.add (new_column (id, preset));
             if (focused == 0) {
                 focused = id;
             }
@@ -220,10 +206,10 @@ namespace Paper {
             }
             var col = columns[c];
             if (col.free_px > 0) {
-                Preset best = Preset.THIRD;
+                int best = 0;
                 int best_diff = int.MAX;
-                foreach (var p in new Preset[] { Preset.THIRD, Preset.HALF, Preset.TWO_THIRDS }) {
-                    int diff = (p.pixels (work_width) - col.free_px).abs ();
+                for (int p = 0; p < @params.presets.length; p++) {
+                    int diff = (@params.pixels (p, work_width) - col.free_px).abs ();
                     if (diff < best_diff) {
                         best = p;
                         best_diff = diff;
@@ -232,7 +218,7 @@ namespace Paper {
                 col.preset = best;
                 col.free_px = 0;
             } else {
-                col.preset = col.preset.next ();
+                col.preset = (@params.clamp_preset (col.preset) + 1) % @params.presets.length;
             }
             col.full = false;
         }
@@ -250,6 +236,9 @@ namespace Paper {
                 return;
             }
             var next = columns[c + 1];
+            if (solo.is_solo (next.windows[0]) || any_solo (columns[c])) {
+                return;
+            }
             var id = next.windows.remove_at (0);
             if (next.windows.size == 0) {
                 columns.remove_at (c + 1);
@@ -268,7 +257,16 @@ namespace Paper {
             var col = columns[c];
             col.windows.remove (focused);
             col.reset_shares ();
-            columns.insert (c + 1, new Column.with (focused, col.preset));
+            columns.insert (c + 1, new_column (focused, col.preset));
+        }
+
+        private bool any_solo (Column col) {
+            foreach (var w in col.windows) {
+                if (solo.is_solo (w)) {
+                    return true;
+                }
+            }
+            return false;
         }
 
         public void set_free_width (uint64 id, int px) {
@@ -297,12 +295,18 @@ namespace Paper {
             }
         }
 
-        public void move_to (uint64 id, DropTarget t) {
+        public void move_to (uint64 id, DropTarget drop) {
+            var t = drop;
             int c = column_of (id);
             if (c < 0 || t.kind == DropKind.NONE) {
                 return;
             }
             bool alone = columns[c].windows.size == 1;
+            if (t.kind == DropKind.INTO_COLUMN && t.column >= 0 && t.column < columns.size
+                && t.column != c && (solo.is_solo (id) || any_solo (columns[t.column]))) {
+                // A solo window never shares a column: it lands beside the target instead.
+                t = DropTarget () { kind = DropKind.NEW_COLUMN, column = t.column + 1 };
+            }
             if (t.kind == DropKind.NEW_COLUMN && alone && (t.column == c || t.column == c + 1)) {
                 return; // its own slot
             }
@@ -326,11 +330,26 @@ namespace Paper {
                 col.windows.insert (t.row.clamp (0, col.windows.size), id);
                 col.reset_shares ();
             } else {
-                columns.insert (target.clamp (0, columns.size), new Column.with (id));
+                columns.insert (target.clamp (0, columns.size), new_column (id));
             }
             if (was_focused || focused == 0) {
                 focus (id);
             }
         }
+    }
+
+    /** The ids ordered by their x, left to right; equal xs keep their order. */
+    public uint64[] order_by_x (uint64[] ids, int[] xs) {
+        var idx = new Gee.ArrayList<int> ();
+        for (int i = 0; i < ids.length; i++) {
+            idx.add (i);
+        }
+        // Gee's sort is a merge sort (TimSort), so it is stable.
+        idx.sort ((a, b) => xs[a] < xs[b] ? -1 : (xs[a] > xs[b] ? 1 : 0));
+        var result = new uint64[ids.length];
+        for (int i = 0; i < ids.length; i++) {
+            result[i] = ids[idx[i]];
+        }
+        return result;
     }
 }
