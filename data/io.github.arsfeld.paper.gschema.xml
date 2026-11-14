@@ -24,6 +24,10 @@
       <default>true</default>
       <summary>Animate layout changes (also needs org.gnome.desktop.interface enable-animations)</summary>
     </key>
+    <key name="focus-ring" type="b">
+      <default>true</default>
+      <summary>Draw a ring in the accent colour around the focused tiled window</summary>
+    </key>
     <key name="app-rules" type="a(sbdb)">
       <default>[]</default>
       <summary>Per-app rules: app id, float, initial width, own column</summary>

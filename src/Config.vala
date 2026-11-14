@@ -20,6 +20,7 @@ namespace Paper {
         public double[] presets = DEFAULT_PRESETS;
         public double default_width { get; private set; default = 0.5; }
         public bool animate { get; private set; default = true; }
+        public bool focus_ring { get; private set; default = true; }
         public Gee.List<AppRule> rules = new Gee.ArrayList<AppRule> ();
         public Settings? settings { get; private set; default = null; }
 
@@ -36,7 +37,7 @@ namespace Paper {
             }
             settings = new Settings (SCHEMA);
             available = true;
-            foreach (var key in new string[] { "enabled", "gap", "width-presets", "default-width", "animate", "app-rules" }) {
+            foreach (var key in new string[] { "enabled", "gap", "width-presets", "default-width", "animate", "focus-ring", "app-rules" }) {
                 load (key);
             }
             settings.changed.connect ((key) => {
@@ -57,6 +58,7 @@ namespace Paper {
                 case "gap": gap = settings.get_int (key); break;
                 case "default-width": default_width = settings.get_double (key); break;
                 case "animate": animate = settings.get_boolean (key); break;
+                case "focus-ring": focus_ring = settings.get_boolean (key); break;
                 case "app-rules": rules = rules_from_variant (settings.get_value (key)); break;
                 case "width-presets": load_presets (); break;
             }

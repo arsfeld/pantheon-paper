@@ -223,6 +223,10 @@ namespace Paper {
                 set_enabled (config.enabled);
                 return;
             }
+            if (key == "focus-ring") {
+                refresh_ring ();
+                return;
+            }
             if (key == "app-rules") {
                 // A rule can float or unfloat windows already open.
                 foreach (var w in windows.values.to_array ()) {
@@ -888,11 +892,11 @@ namespace Paper {
             refresh_ring ();
         }
 
-        /** The ring goes round the focused window while it is tiled on the visible workspace, and nowhere else. */
+        /** The ring goes round the focused window while it is tiled on the visible workspace, and nowhere else; `focus-ring` off hides it. */
         private void refresh_ring () {
             var w = display.focus_window;
             var s = current_strip ();
-            bool tiled = w != null && windows.has_key (w.get_id ()) && s != null && s.contains (w.get_id ());
+            bool tiled = config.focus_ring && w != null && windows.has_key (w.get_id ()) && s != null && s.contains (w.get_id ());
             ring.show (tiled ? w : null, ring_width (@params.gap), work_area ());
         }
 

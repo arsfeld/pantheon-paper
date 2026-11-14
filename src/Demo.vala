@@ -192,6 +192,8 @@ namespace Paper {
             add ("focus-left", () => this.actions.run ("focus-left"));
             add ("slurp", () => this.actions.run ("slurp"));
             add ("settle", () => {});
+            add ("ring-off", () => settings ()?.set_boolean ("focus-ring", false));
+            add ("ring-on", () => settings ()?.set_boolean ("focus-ring", true));
             add ("rebind", () => {
                 // Lookup first, as Keys does: a missing schema aborts Gala.
                 var source = SettingsSchemaSource.get_default ();

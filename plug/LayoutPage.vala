@@ -46,6 +46,11 @@ namespace Paper {
             };
             settings.bind ("animate", animate, "active", SettingsBindFlags.DEFAULT);
 
+            var focus_ring = new Gtk.Switch () {
+                valign = Gtk.Align.CENTER
+            };
+            settings.bind ("focus-ring", focus_ring, "active", SettingsBindFlags.DEFAULT);
+
             default_width = new Gtk.DropDown.from_strings ({}) {
                 valign = Gtk.Align.CENTER
             };
@@ -63,6 +68,7 @@ namespace Paper {
             attach_row (general, 0, "Gap between windows", "In pixels, between columns and between stacked windows", gap);
             attach_row (general, 1, "New column width", "Snaps to one of the widths below", default_width);
             attach_row (general, 2, "Animate", "Also needs the desktop's animations on", animate);
+            attach_row (general, 3, "Focus ring", "An outline in the accent colour around the focused tiled window", focus_ring);
 
             preset_list = new Gtk.ListBox () {
                 selection_mode = Gtk.SelectionMode.NONE

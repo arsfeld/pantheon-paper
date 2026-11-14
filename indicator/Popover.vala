@@ -76,6 +76,9 @@ namespace Paper {
             var animate = new Granite.SwitchModelButton ("Animate");
             settings.bind ("animate", animate, "active", SettingsBindFlags.DEFAULT);
 
+            var focus_ring = new Granite.SwitchModelButton ("Focus ring");
+            settings.bind ("focus-ring", focus_ring, "active", SettingsBindFlags.DEFAULT);
+
             // menu_name switches this stack to the named page.
             var shortcuts_button = new Gtk.ModelButton () {
                 text = "Shortcuts",
@@ -101,6 +104,7 @@ namespace Paper {
             main.add (separator ());
             main.add (gap_row);
             main.add (animate);
+            main.add (focus_ring);
             main.add (separator ());
             main.add (shortcuts_button);
             main.add (add_rule);
