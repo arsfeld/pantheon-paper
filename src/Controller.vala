@@ -32,6 +32,12 @@ namespace Paper {
         private Gee.HashSet<uint64?> floating = new Gee.HashSet<uint64?> (id_hash, id_equal);
         private Gee.HashSet<uint64?> adopted = new Gee.HashSet<uint64?> (id_hash, id_equal);
         /**
+         * Workspaces whose tiling is switched off for this session. Pantheon's
+         * workspaces are dynamic, so there is nothing stable to save it against;
+         * a workspace Gala removes is pruned, as its strip is.
+         */
+        private Gee.HashSet<Meta.Workspace> off = new Gee.HashSet<Meta.Workspace> ();
+        /**
          * Where a window sat when it went fullscreen. Gala moves a fullscreen
          * window to a workspace of its own and back again, so the slot keeps its
          * workspace and is used only when the window re-enters that one.
@@ -76,6 +82,8 @@ namespace Paper {
         private Applier applier;
         private Settings interface_settings;
         public bool applying { get; private set; default = false; }
+        /** Either switch changed, or the active workspace did (`workspace_tiled` may differ there). */
+        public signal void state_changed ();
         /** A window the user is moving or resizing: layouts leave it where the pointer has it. */
         public uint64 grabbed { get; set; default = 0; }
 
@@ -105,7 +113,10 @@ namespace Paper {
 
             var manager = display.get_workspace_manager ();
             manager_handlers += manager.workspace_removed.connect (prune_workspaces);
-            manager_handlers += manager.active_workspace_changed.connect (() => relayout (false));
+            manager_handlers += manager.active_workspace_changed.connect (() => {
+                relayout (false);
+                state_changed ();
+            });
 
             adopt_existing ();
         }
@@ -146,9 +157,10 @@ namespace Paper {
             return null;
         }
 
+        /** The active workspace's strip; null while tiling is off there. */
         public Strip? current_strip () {
             var ws = display.get_workspace_manager ().get_active_workspace ();
-            return ws == null ? null : strip_for (ws);
+            return tiles (ws) ? strip_for (ws) : null;
         }
 
         public Rect work_area () {
@@ -195,6 +207,10 @@ namespace Paper {
 
         private void on_config_changed (string key) {
             refresh_params ();
+            if (key == "enabled") {
+                set_enabled (config.enabled);
+                return;
+            }
             if (key == "app-rules") {
                 // A rule can float or unfloat windows already open.
                 foreach (var w in windows.values.to_array ()) {
@@ -228,6 +244,145 @@ namespace Paper {
             return floating.contains (id);
         }
 
+        // ---- switching tiling off and on ----
+
+        /** Whether new and re-entering windows of `ws` go into its strip. */
+        private bool tiles (Meta.Workspace? ws) {
+            return ws != null && config.enabled && !off.contains (ws);
+        }
+
+        /**
+         * The per-workspace switch: false when `ws` was switched off for this
+         * session. It is the switch's own value, independent of `enabled`.
+         */
+        public bool workspace_tiled (Meta.Workspace ws) {
+            return !off.contains (ws);
+        }
+
+        public void set_workspace_tiled (Meta.Workspace ws, bool on) {
+            if (on == workspace_tiled (ws)) {
+                return;
+            }
+            if (on) {
+                off.remove (ws);
+                if (config.enabled) {
+                    adopt (ws);
+                }
+            } else {
+                off.add (ws);
+                release (ws);
+            }
+            state_changed ();
+        }
+
+        /** The global switch (`enabled`): drop every strip, or adopt every workspace. */
+        private void set_enabled (bool on) {
+            if (on) {
+                var manager = display.get_workspace_manager ();
+                for (int i = 0; i < manager.get_n_workspaces (); i++) {
+                    var ws = manager.get_workspace_by_index (i);
+                    if (!off.contains (ws)) {
+                        adopt (ws);
+                    }
+                }
+            } else {
+                // A copy: release unsets entries (to_array () warns in C).
+                var all = new Gee.ArrayList<Meta.Workspace> ();
+                all.add_all (strips.keys);
+                foreach (var ws in all) {
+                    release (ws);
+                }
+            }
+            state_changed ();
+        }
+
+        /**
+         * Drop the workspace's strip and leave its windows where they are. Only
+         * parked windows move, just far enough inside the work area on their
+         * side to be fully on screen, or they would be stranded off the edge.
+         * The windows stay tracked, so `adopt` can take them back.
+         */
+        private void release (Meta.Workspace ws) {
+            if (!strips.has_key (ws)) {
+                return;
+            }
+            var strip = strips[ws];
+            var work = work_area_of (ws);
+            bool wall_left, wall_right;
+            walls (out wall_left, out wall_right);
+            var result = layout (strip, work, this, wall_left, wall_right);
+            strips.unset (ws);
+            foreach (var p in result.windows) {
+                var w = window_for (p.id);
+                if (w == null) {
+                    continue;
+                }
+                // Stop any animation, so the window shows where its frame is.
+                applier.forget (p.id);
+                var actor = w.get_compositor_private () as Clutter.Actor;
+                if (actor != null) {
+                    actor.set_translation (0, 0, 0);
+                }
+                if (!p.parked || p.id == grabbed) {
+                    continue;
+                }
+                var f = w.get_frame_rect ();
+                int x = f.x;
+                if (x + f.width > work.x + work.width) {
+                    x = work.x + work.width - f.width;
+                }
+                if (x < work.x) {
+                    x = work.x;
+                }
+                if (x != f.x) {
+                    // A user op, as the Applier moves windows.
+                    w.move_resize_frame (true, x, f.y, f.width, f.height);
+                }
+            }
+        }
+
+        /**
+         * Tile the workspace's windows again, as columns ordered left to right
+         * by where their frames are now.
+         */
+        private void adopt (Meta.Workspace ws) {
+            if (!tiles (ws)) {
+                return;
+            }
+            // In id (creation) order, so windows at the same x, such as two
+            // released from one edge, keep a stable order rather than the
+            // hash map's.
+            var keys = new Gee.ArrayList<uint64?> (id_equal);
+            keys.add_all (windows.keys);
+            keys.sort ((a, b) => (uint64) a < (uint64) b ? -1 : ((uint64) a > (uint64) b ? 1 : 0));
+            uint64[] ids = {};
+            int[] xs = {};
+            foreach (var id in keys) {
+                var w = windows[id];
+                if (w.get_workspace () != ws || !adopted.contains (id) || strip_of (id) != null) {
+                    continue;
+                }
+                if (!should_tile (facts_for (w))) {
+                    continue;
+                }
+                ids += id;
+                xs += w.get_frame_rect ().x;
+            }
+            if (ids.length == 0) {
+                return;
+            }
+            var strip = strip_for (ws);
+            foreach (var id in order_by_x (ids, xs)) {
+                strip.append (id);
+            }
+            var focus = display.focus_window;
+            if (focus != null && strip.contains (focus.get_id ())) {
+                strip.focus (focus.get_id ());
+            }
+            scroll_to_focus (strip, work_area_of (ws), this);
+            relayout ();
+        }
+
         // ---- window tracking ----
 
         private void adopt_existing () {
@@ -244,7 +399,7 @@ namespace Paper {
             foreach (var w in display.sort_windows_by_stacking (all)) {
                 track (w);
                 adopted.add (w.get_id ());
-                if (should_tile (facts_for (w))) {
+                if (tiles (w.get_workspace ()) && should_tile (facts_for (w))) {
                     strip_for (w.get_workspace ()).append (w.get_id ());
                 }
             }
@@ -343,7 +498,7 @@ namespace Paper {
             var current = strip_of (id);
             Strip? target = null;
             var ws = w.get_workspace ();
-            if (should_tile (facts_for (w)) && ws != null) {
+            if (tiles (ws) && should_tile (facts_for (w))) {
                 target = strip_for (ws);
             }
             if (current == target) {
@@ -466,6 +621,7 @@ namespace Paper {
                     strips.unset (ws);
                 }
             }
+            off.retain_all (live);
         }
 
         /** The visible workspace's strip laid out as it is on screen (hints and monitor walls included). */
@@ -550,27 +706,45 @@ namespace Paper {
             });
         }
 
-        /** One line per column of the active strip, for the demo log. */
+        /**
+         * One line per column of the active strip, for the demo log, then
+         * `|| free:` and every other normal window of the active workspace
+         * (floating, or all of them while tiling is off there).
+         */
         public string describe () {
             var s = current_strip ();
-            if (s == null) {
-                return "no strip";
-            }
-            var parts = new string[0];
-            foreach (var col in s.columns) {
-                var ws = new string[0];
-                foreach (var id in col.windows) {
-                    var w = window_for (id);
-                    if (w == null) {
-                        continue;
+            var text = "no strip";
+            if (s != null) {
+                var parts = new string[0];
+                foreach (var col in s.columns) {
+                    var ws = new string[0];
+                    foreach (var id in col.windows) {
+                        var w = window_for (id);
+                        if (w != null) {
+                            ws += frame_text (w, (uint64) id == s.focused);
+                        }
                     }
-                    var f = w.get_frame_rect ();
-                    ws += "%s%s@%d,%d %dx%d".printf (
-                        (uint64) id == s.focused ? "*" : "", w.get_title () ?? "?", f.x, f.y, f.width, f.height);
+                    parts += string.joinv (" / ", ws);
                 }
-                parts += string.joinv (" / ", ws);
+                text = "scroll=%d | %s".printf (s.scroll_x, string.joinv (" | ", parts));
             }
-            return "scroll=%d | %s".printf (s.scroll_x, string.joinv (" | ", parts));
+            var active = display.get_workspace_manager ().get_active_workspace ();
+            var free = new string[0];
+            foreach (var w in windows.values) {
+                if (w.get_workspace () == active && w.get_window_type () == Meta.WindowType.NORMAL
+                    && strip_of (w.get_id ()) == null) {
+                    free += frame_text (w, false);
+                }
+            }
+            if (free.length > 0) {
+                text += " || free: " + string.joinv (" | ", free);
+            }
+            return text;
+        }
+
+        private static string frame_text (Meta.Window w, bool focused) {
+            var f = w.get_frame_rect ();
+            return "%s%s@%d,%d %dx%d".printf (focused ? "*" : "", w.get_title () ?? "?", f.x, f.y, f.width, f.height);
         }
     }
 }

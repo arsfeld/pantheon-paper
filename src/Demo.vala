@@ -13,8 +13,9 @@ namespace Paper {
      * coordinates; with PAPER_DEMO_IDLE=1 there are only settle steps, for
      * input injected from outside by tests/inject.py; with PAPER_DEMO_SETTINGS=1
      * they write io.github.arsfeld.paper (and one keybinding) from inside Gala,
-     * whose memory GSettings backend `gsettings set` cannot reach. Never
-     * injects input.
+     * whose memory GSettings backend `gsettings set` cannot reach; with
+     * PAPER_DEMO_TOGGLE=1 they switch tiling off and on, globally and for the
+     * active workspace. Never injects input.
      */
     public class Demo : Object {
         public delegate void Step ();
@@ -59,6 +60,10 @@ namespace Paper {
                 for (int i = 0; i < 8; i++) {
                     add ("settle", () => {});
                 }
+                return;
+            }
+            if (Environment.get_variable ("PAPER_DEMO_TOGGLE") == "1") {
+                add_toggle_steps ();
                 return;
             }
             if (Environment.get_variable ("PAPER_DEMO_SETTINGS") == "1") {
@@ -179,11 +184,36 @@ namespace Paper {
                 }
                 // Not <Super>h: that is org.gnome.desktop.wm.keybindings minimize,
                 // which then wins. Nothing else binds <Super>j.
-                string[] accels = { "<Super>j" };
-                new Settings (KEYS).set_strv ("focus-left", accels);
+                // An "as" built element by element: set_strv and Variant.strv
+                // both pass a string[] where C wants const pointers, and warn.
+                new Settings (KEYS).set_value ("focus-left",
+                    new Variant.array (VariantType.STRING, { new Variant.string ("<Super>j") }));
             });
             for (int i = 0; i < 4; i++) {
                 add ("settle", () => {});
+            }
+        }
+
+        /**
+         * Tiling off and on: for the session through `enabled`, then for the
+         * active workspace through the controller (the switch the D-Bus
+         * property drives). A window opened while the workspace is off stays
+         * out of the strip (`|| free:` in the log) until it is switched on.
+         */
+        private void add_toggle_steps () {
+            add ("off", () => settings ()?.set_boolean ("enabled", false));
+            add ("on", () => settings ()?.set_boolean ("enabled", true));
+            add ("ws-off", () => set_ws_tiled (false));
+            add ("open-on-ws-off", () => open_window ());
+            add ("ws-on", () => set_ws_tiled (true));
+            add ("settle", () => {});
+        }
+
+        private void set_ws_tiled (bool on) {
+            var ws = display.get_workspace_manager ().get_active_workspace ();
+            if (ws != null) {
+                c.set_workspace_tiled (ws, on);
+                message ("paper-demo: workspace_tiled=%s", c.workspace_tiled (ws).to_string ());
             }
         }
 
