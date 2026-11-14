@@ -113,6 +113,33 @@ void main (string[] args) {
         assert (model.icon_name == WS_OFF);
     });
 
+    Test.add_func ("/indicator/can_float", () => {
+        var settings = fresh_settings ();
+        var model = new IndicatorModel (settings);
+        assert (!model.can_float);
+        var fake = new FakeProxy ();
+        model.set_proxy (fake);
+        assert (!model.can_float); // no focused app
+        fake.app = AppEntry () { id = "org.mozilla.firefox", name = "Firefox" };
+        assert (model.can_float);
+
+        // Tiling off on this workspace, or everywhere: a toggle would do nothing visible.
+        fake.workspace_tiled = false;
+        assert (!model.can_float);
+        fake.workspace_tiled = true;
+        assert (model.can_float);
+        settings.set_boolean ("enabled", false);
+        assert (!model.can_float);
+        settings.set_boolean ("enabled", true);
+        assert (model.can_float);
+
+        fake.app = AppEntry () { id = "", name = "" };
+        assert (!model.can_float);
+        fake.app = AppEntry () { id = "org.mozilla.firefox", name = "Firefox" };
+        model.set_proxy (null);
+        assert (!model.can_float);
+    });
+
     Test.add_func ("/indicator/switch_writes_settings", () => {
         var settings = fresh_settings ();
         var model = new IndicatorModel (settings);

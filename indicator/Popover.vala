@@ -126,7 +126,7 @@ namespace Paper {
             var has_app = model.connected && model.focused_id != "";
             var app = model.focused_name != "" ? model.focused_name : model.focused_id;
             workspace_switch.sensitive = model.connected && model.enabled;
-            float_switch.sensitive = has_app;
+            float_switch.sensitive = model.can_float;
             float_switch.text = has_app ? "Float \"%s\"".printf (app) : "Float window";
             add_rule.sensitive = has_app;
             add_rule.text = has_app ? "Add rule for \"%s\"…".printf (app) : "Add rule…";

@@ -22,6 +22,13 @@ namespace Paper {
         public string focused_id { get; private set; default = ""; }
         public string focused_name { get; private set; default = ""; }
         public string icon_name { get; private set; default = ICON_TILING; }
+        /**
+         * Whether floating the focused window can do anything: connected, a
+         * focused app, and tiling on both globally and on this workspace. With
+         * tiling off nothing is in a strip, so a toggle would change nothing
+         * visible and leave the window floating when tiling returns.
+         */
+        public bool can_float { get; private set; default = false; }
 
         private PaperProxy? proxy = null;
         private ulong[] handlers = {};
@@ -36,7 +43,7 @@ namespace Paper {
                 if (!reading && proxy != null && proxy.workspace_tiled != value) {
                     proxy.workspace_tiled = value;
                 }
-                update_icon ();
+                update_derived ();
             }
         }
 
@@ -57,8 +64,8 @@ namespace Paper {
 
         construct {
             settings.bind ("enabled", this, "enabled", SettingsBindFlags.DEFAULT);
-            notify["enabled"].connect (update_icon);
-            update_icon ();
+            notify["enabled"].connect (update_derived);
+            update_derived ();
         }
 
         /** Follow `p`, or with null forget the plugin (its name lost its owner). */
@@ -98,10 +105,11 @@ namespace Paper {
                 focused_name = "";
             }
             reading = false;
-            update_icon ();
+            update_derived ();
         }
 
-        private void update_icon () {
+        /* The icon and `can_float`, from the values they follow. */
+        private void update_derived () {
             string name;
             if (!enabled) {
                 name = ICON_OFF;
@@ -112,6 +120,10 @@ namespace Paper {
             }
             if (name != icon_name) {
                 icon_name = name;
+            }
+            var now_can_float = connected && enabled && workspace_tiled && focused_id != "";
+            if (now_can_float != can_float) {
+                can_float = now_can_float;
             }
         }
     }
