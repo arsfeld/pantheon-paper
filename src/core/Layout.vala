@@ -21,6 +21,13 @@ namespace Paper {
         public Gee.ArrayList<Placement?> windows = new Gee.ArrayList<Placement?> ();
         /** Each column's on-screen rectangle, in strip order. */
         public Gee.ArrayList<Rect?> columns = new Gee.ArrayList<Rect?> ();
+        /** Whether each column is parked, in strip order. */
+        public Gee.ArrayList<bool> parked = new Gee.ArrayList<bool> ();
+    }
+
+    public enum Side {
+        LEFT,
+        RIGHT
     }
 
     private int column_width (Params p, Column col, Rect work, WidthHints hints) {
@@ -85,6 +92,7 @@ namespace Paper {
                 parked = true;
             }
             result.columns.add (Rect (x, work.y, w, work.height));
+            result.parked.add (parked);
 
             int n = col.windows.size;
             int available = work.height - gap * (n - 1);
@@ -103,6 +111,28 @@ namespace Paper {
             left += w + gap;
         }
         return result;
+    }
+
+    /**
+     * The column a screen edge hides: the one nearest the visible area on
+     * `side` that has its centre beyond that edge, or is parked on that half
+     * of the work area. Its index into `r.columns`, or -1 when nothing is
+     * hidden there.
+     */
+    public int hidden_beyond (LayoutResult r, Rect work, Side side) {
+        int n = r.columns.size;
+        int mid = work.x + work.width / 2;
+        for (int k = 0; k < n; k++) {
+            int i = side == Side.RIGHT ? k : n - 1 - k;
+            int centre = r.columns[i].x + r.columns[i].width / 2;
+            bool hidden = side == Side.RIGHT
+                ? centre > work.x + work.width || (r.parked[i] && centre > mid)
+                : centre < work.x || (r.parked[i] && centre < mid);
+            if (hidden) {
+                return i;
+            }
+        }
+        return -1;
     }
 
     /**

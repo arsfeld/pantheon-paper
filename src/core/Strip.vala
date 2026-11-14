@@ -142,7 +142,7 @@ namespace Paper {
             }
         }
 
-        private uint64 active_window (Column col) {
+        public uint64 active_window (Column col) {
             return col.windows[col.active_row.clamp (0, col.windows.size - 1)];
         }
 

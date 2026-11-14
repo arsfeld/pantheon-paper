@@ -245,5 +245,44 @@ void main (string[] args) {
         assert (layout (s, narrow, new NoHints ()).windows[0].rect.width == 67); // round (150 * 0.5) - 8
     });
 
+    // The column a screen edge hides: what an edge preview shows.
+    Test.add_func ("/layout/hidden_beyond_ends", () => {
+        var s = margined (4);
+        s.focus (3);
+        scroll_to_focus (s, WORK, new NoHints ());
+        var r = layout (s, WORK, new NoHints ());
+        assert (hidden_beyond (r, WORK, Side.RIGHT) == 3);
+        assert (hidden_beyond (r, WORK, Side.LEFT) == 0);
+    });
+
+    Test.add_func ("/layout/hidden_beyond_none_when_it_fits", () => {
+        var r = layout (margined (2), WORK, new NoHints ());
+        assert (hidden_beyond (r, WORK, Side.LEFT) == -1 && hidden_beyond (r, WORK, Side.RIGHT) == -1);
+    });
+
+    Test.add_func ("/layout/hidden_beyond_walled_parked_counts", () => {
+        var r = layout (margined (3), WORK, new NoHints (), false, true);
+        assert (hidden_beyond (r, WORK, Side.RIGHT) == 2); // parked at 988, its centre on screen
+    });
+
+    Test.add_func ("/layout/hidden_beyond_straddler", () => {
+        var s = strip_of (3);
+        s.scroll_x = 400; // column 3 at 1520, width 952: its centre 1996 is past 1920
+        var r = layout (s, WORK, new NoHints ());
+        assert (hidden_beyond (r, WORK, Side.RIGHT) == 2 && hidden_beyond (r, WORK, Side.LEFT) == -1);
+    });
+
+    Test.add_func ("/layout/hidden_beyond_walled_left_full_width", () => {
+        var s = margined (2);
+        s.focus (1);
+        s.toggle_full ();
+        s.focus (2);
+        scroll_to_focus (s, WORK, new NoHints ());
+        // Column 1 is parked flush at 0, 1880 wide: its centre (940) is left of the middle.
+        var r = layout (s, WORK, new NoHints (), true, false);
+        assert (r.parked[0] && r.columns[0].x == 0);
+        assert (hidden_beyond (r, WORK, Side.LEFT) == 0 && hidden_beyond (r, WORK, Side.RIGHT) == -1);
+    });
+
     Test.run ();
 }
