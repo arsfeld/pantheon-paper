@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schemalist>
+  <schema id="io.github.arsfeld.paper" path="/io/github/arsfeld/paper/">
+    <key name="enabled" type="b">
+      <default>true</default>
+      <summary>Tile windows into scrolling strips</summary>
+      <description>When off, no workspace is tiled and windows stay where they are.</description>
+    </key>
+    <key name="gap" type="i">
+      <range min="0" max="48"/>
+      <default>8</default>
+      <summary>Gap between columns and between stacked windows, in logical pixels</summary>
+    </key>
+    <key name="width-presets" type="ad">
+      <default>[0.3333333333, 0.5, 0.6666666667]</default>
+      <summary>Column widths that cycle-width steps through, as fractions of the work area</summary>
+      <description>2 to 6 entries, each from 0.1 to 1.0, strictly increasing. Any other value is ignored and the defaults are used.</description>
+    </key>
+    <key name="default-width" type="d">
+      <default>0.5</default>
+      <summary>Width of a new column, as a fraction of the work area; snaps to the nearest preset</summary>
+    </key>
+    <key name="animate" type="b">
+      <default>true</default>
+      <summary>Animate layout changes (also needs org.gnome.desktop.interface enable-animations)</summary>
+    </key>
+    <key name="app-rules" type="a(sbdb)">
+      <default>[]</default>
+      <summary>Per-app rules: app id, float, initial width, own column</summary>
+      <description>The app id matches, ignoring case, a window's GTK application id, sandboxed app id or WM_CLASS; the first matching rule wins. An initial width of 0 means the default width, 1 full width, anything else a fraction that snaps to the nearest preset.</description>
+    </key>
+  </schema>
+</schemalist>

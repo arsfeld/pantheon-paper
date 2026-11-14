@@ -2,14 +2,19 @@
 """A plain GTK 3 window for the PAPER_DEMO hook: titled `demo <n>`, with a big
 number and a colour per window, so screenshots show which window is where.
 With PAPER_DEMO_WIDE=<n>, window n refuses to be narrower than 1100 px; with
-PAPER_DEMO_FIXED=<n>, window n is not resizable."""
+PAPER_DEMO_FIXED=<n>, window n is not resizable. Its app id is
+io.github.arsfeld.PaperDemo."""
 import os
 import sys
 
 import gi
 
 gi.require_version("Gtk", "3.0")
-from gi.repository import Gtk  # noqa: E402
+from gi.repository import GLib, Gtk  # noqa: E402
+
+# A fixed app id (the Wayland app_id GTK takes from the program name, which
+# Mutter reports as WM_CLASS), for app rules in PAPER_DEMO_SETTINGS.
+GLib.set_prgname("io.github.arsfeld.PaperDemo")
 
 n = sys.argv[1] if len(sys.argv) > 1 else "0"
 colours = ["#c6262e", "#f37329", "#f9c440", "#68b723", "#3689e6", "#a56de2"]

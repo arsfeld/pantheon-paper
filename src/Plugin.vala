@@ -8,7 +8,7 @@ namespace Paper {
         public override void initialize (Gala.WindowManager wm) {
             var display = wm.get_display ();
             message ("pantheon-paper: loaded on %d monitor(s)", display.get_n_monitors ());
-            controller = new Controller (wm);
+            controller = new Controller (wm, new Config ());
             var actions = new Actions (controller, display);
             keys = new Keys (display, actions);
             mouse = new Mouse (wm, controller);

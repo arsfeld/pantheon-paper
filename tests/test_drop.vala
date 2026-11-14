@@ -18,6 +18,26 @@ Strip with_stack () {
     return s;
 }
 
+class SetSolo : Object, SoloCheck {
+    public Gee.HashSet<uint64?> ids = new Gee.HashSet<uint64?> (id_hash, id_equal);
+    public bool is_solo (uint64 id) {
+        return ids.contains (id);
+    }
+}
+
+// strip_of (n) whose solo set is `ids`.
+Strip solo_strip (int n, uint64[] ids) {
+    var solo = new SetSolo ();
+    foreach (var id in ids) {
+        solo.ids.add (id);
+    }
+    var s = new Strip (new Params (), solo);
+    for (int i = 1; i <= n; i++) {
+        s.insert_after_focused (i);
+    }
+    return s;
+}
+
 DropTarget hit (Strip s, uint64 dragged, int x, int y) {
     return hit_test (layout (s, WORK, new NoHints ()), s, dragged, x, y);
 }
@@ -71,6 +91,20 @@ void main (string[] args) {
     Test.add_func ("/drop/outside_is_none", () => {
         assert (hit (strip_of (2), 1, 1915, 500).kind == DropKind.NONE);
         assert (hit (new Strip (), 1, 100, 100).kind == DropKind.NONE);
+    });
+
+    // A solo window never shares a column, so the preview shows what Strip.move_to does.
+    Test.add_func ("/drop/solo_into_column_is_new_column_after", () => {
+        var t = hit (solo_strip (3, { 2 }), 1, 1436, 600);
+        assert (t.kind == DropKind.NEW_COLUMN && t.column == 2);
+        var u = hit (solo_strip (3, { 1 }), 1, 1436, 600);
+        assert (u.kind == DropKind.NEW_COLUMN && u.column == 2);
+        // Within its own stacked column the reorder stays a reorder.
+        var v = with_stack ();
+        v.solo = new SetSolo ();
+        ((SetSolo) v.solo).ids.add (3);
+        var w = hit (v, 2, 1436, 1000);
+        assert (w.kind == DropKind.INTO_COLUMN && w.column == 1);
     });
 
     Test.add_func ("/drop/shares_from_heights_normalised", () => {

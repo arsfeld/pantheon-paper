@@ -18,9 +18,11 @@ namespace Paper {
      * up by id and tolerates them being gone; `unmanaging` drops a window from
      * every map before anything else can touch it.
      */
-    public class Controller : Object, WidthHints {
+    public class Controller : Object, WidthHints, SoloCheck {
         public Gala.WindowManager wm { get; construct; }
-        /** Gap and width presets, shared by every strip. */
+        /** The saved settings; `params` and the app rules follow it live. */
+        public Config config { get; construct; }
+        /** Gap and width presets, shared by every strip, kept in sync with `config`. */
         public Params @params = new Params ();
 
         private unowned Meta.Display display;
@@ -70,20 +72,23 @@ namespace Paper {
         private uint recheck_source = 0;
         private Gee.ArrayList<ulong> display_handlers = new Gee.ArrayList<ulong> ();
         private ulong[] manager_handlers = {};
+        private ulong config_handler = 0;
         private Applier applier;
         private Settings interface_settings;
         public bool applying { get; private set; default = false; }
         /** A window the user is moving or resizing: layouts leave it where the pointer has it. */
         public uint64 grabbed { get; set; default = 0; }
 
-        public Controller (Gala.WindowManager wm) {
-            Object (wm: wm);
+        public Controller (Gala.WindowManager wm, Config config) {
+            Object (wm: wm, config: config);
         }
 
         construct {
             display = wm.get_display ();
             applier = new Applier (this);
             interface_settings = new Settings ("org.gnome.desktop.interface");
+            refresh_params ();
+            config_handler = config.changed.connect (on_config_changed);
 
             display_handlers.add (display.window_created.connect ((w) => {
                 track (w);
@@ -106,6 +111,10 @@ namespace Paper {
         }
 
         public void destroy () {
+            if (config_handler != 0) {
+                config.disconnect (config_handler);
+                config_handler = 0;
+            }
             foreach (var h in display_handlers) {
                 display.disconnect (h);
             }
@@ -173,7 +182,46 @@ namespace Paper {
         }
 
         public bool animations_enabled () {
-            return interface_settings.get_boolean ("enable-animations");
+            return config.animate && interface_settings.get_boolean ("enable-animations");
+        }
+
+        // ---- settings ----
+
+        private void refresh_params () {
+            @params.gap = config.gap;
+            @params.presets = presets_or_default (config.presets);
+            @params.default_preset = nearest_preset (@params.presets, config.default_width);
+        }
+
+        private void on_config_changed (string key) {
+            refresh_params ();
+            if (key == "app-rules") {
+                // A rule can float or unfloat windows already open.
+                foreach (var w in windows.values.to_array ()) {
+                    if (adopted.contains (w.get_id ())) {
+                        reevaluate (w, Reason.FLOAT);
+                    }
+                }
+            }
+            relayout ();
+        }
+
+        /** The first app rule matching the window's GTK application id, sandboxed app id or WM_CLASS. */
+        public AppRule? rule_for (Meta.Window w) {
+            if (config.rules.size == 0) {
+                return null;
+            }
+            return match_rule (config.rules, w.get_gtk_application_id (), w.get_sandboxed_app_id (), w.get_wm_class ());
+        }
+
+        /** A window whose rule gives it a column of its own (SoloCheck, for slurp and drops). */
+        public bool is_solo (uint64 id) {
+            var w = window_for (id);
+            if (w == null) {
+                return false;
+            }
+            var rule = rule_for (w);
+            return rule != null && rule.own_column;
         }
 
         public bool is_floating (uint64 id) {
@@ -265,6 +313,7 @@ namespace Paper {
         }
 
         private WindowFacts facts_for (Meta.Window w) {
+            var rule = rule_for (w);
             return WindowFacts () {
                 normal_type = w.get_window_type () == Meta.WindowType.NORMAL
                     && !w.is_override_redirect () && !w.is_skip_taskbar (),
@@ -274,13 +323,13 @@ namespace Paper {
                 on_primary = w.get_monitor () == display.get_primary_monitor (),
                 on_all_workspaces = w.is_on_all_workspaces (),
                 floating = floating.contains (w.get_id ()),
-                rule_float = false,
+                rule_float = rule != null && rule.float_,
             };
         }
 
         private Strip strip_for (Meta.Workspace ws) {
             if (!strips.has_key (ws)) {
-                strips[ws] = new Strip (@params);
+                strips[ws] = new Strip (@params, this);
             }
             return strips[ws];
         }
@@ -323,7 +372,15 @@ namespace Paper {
                 } else if (reason == Reason.WORKSPACE) {
                     target.append (id);
                 } else {
-                    target.insert_after_focused (id);
+                    // A rule's initial width applies only to a new window; later
+                    // re-entries keep the width their saved slot or the default gives.
+                    var rule = reason == Reason.CREATED ? rule_for (w) : null;
+                    double width = rule != null ? rule.width : 0.0;
+                    int preset = width > 0.0 && width < 1.0 ? nearest_preset (@params.presets, width) : -1;
+                    target.insert_after_focused (id, preset);
+                    if (width >= 1.0) {
+                        target.columns[target.column_of (id)].full = true;
+                    }
                 }
                 if (w.get_maximized () != 0) {
                     on_maximized (id);

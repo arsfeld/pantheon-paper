@@ -26,6 +26,10 @@ namespace Paper {
                 if (col.windows.size == 1 && col.windows[0] == dragged) {
                     return none;
                 }
+                if (!col.windows.contains (dragged) && (s.solo.is_solo (dragged) || has_solo (s, col))) {
+                    // A solo window never shares a column: Strip.move_to puts it beside the target.
+                    return DropTarget () { kind = DropKind.NEW_COLUMN, column = i + 1 };
+                }
                 int row = 0;
                 foreach (var p in r.windows) {
                     if (p.id != dragged && col.windows.contains (p.id) && p.rect.y + p.rect.height / 2 < y) {
@@ -39,6 +43,15 @@ namespace Paper {
             }
         }
         return none;
+    }
+
+    private bool has_solo (Strip s, Column col) {
+        foreach (var w in col.windows) {
+            if (s.solo.is_solo (w)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private bool is_parked (LayoutResult r, Column col) {

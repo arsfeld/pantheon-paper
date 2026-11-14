@@ -80,6 +80,7 @@ endif
 
 install_data(
     'data/io.github.arsfeld.paper.keybindings.gschema.xml',
+    'data/io.github.arsfeld.paper.gschema.xml',
     install_dir: get_option('datadir') / 'glib-2.0' / 'schemas',
 )
 gnome.post_install(glib_compile_schemas: true)

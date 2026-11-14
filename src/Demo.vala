@@ -11,7 +11,10 @@ namespace Paper {
      * name through Actions; with PAPER_DEMO_MOUSE=1 they are drops, a pan and
      * a resize, run through Mouse's end-of-grab handlers with computed
      * coordinates; with PAPER_DEMO_IDLE=1 there are only settle steps, for
-     * input injected from outside by tests/inject.py. Never injects input.
+     * input injected from outside by tests/inject.py; with PAPER_DEMO_SETTINGS=1
+     * they write io.github.arsfeld.paper (and one keybinding) from inside Gala,
+     * whose memory GSettings backend `gsettings set` cannot reach. Never
+     * injects input.
      */
     public class Demo : Object {
         public delegate void Step ();
@@ -27,6 +30,9 @@ namespace Paper {
         }
 
         private const string NEXT = "/tmp/paper-demo.next";
+        /** The app id of tests/demo-window.py's windows. */
+        private const string DEMO_APP = "io.github.arsfeld.PaperDemo";
+        private const string KEYS = "io.github.arsfeld.paper.keybindings";
 
         private Controller c;
         private Actions actions;
@@ -35,6 +41,7 @@ namespace Paper {
         private Gee.ArrayList<Entry> steps = new Gee.ArrayList<Entry> ();
         private int index = 0;
         private int count;
+        private int opened = 0;
         private bool wait_for_file;
 
         public Demo (Controller c, Actions actions, Mouse mouse, Meta.Display display, int count) {
@@ -52,6 +59,10 @@ namespace Paper {
                 for (int i = 0; i < 8; i++) {
                     add ("settle", () => {});
                 }
+                return;
+            }
+            if (Environment.get_variable ("PAPER_DEMO_SETTINGS") == "1") {
+                add_settings_steps ();
                 return;
             }
             if (Environment.get_variable ("PAPER_DEMO_MOUSE") == "1") {
@@ -122,16 +133,92 @@ namespace Paper {
             steps.add (new Entry (name, (owned) run));
         }
 
-        public void start () {
-            var cmd = Environment.get_variable ("PAPER_DEMO_CMD") ?? "io.elementary.terminal";
-            int opened = 0;
-            Timeout.add (400, () => {
-                opened++;
-                try {
-                    Process.spawn_command_line_async ("%s %d".printf (cmd, opened));
-                } catch (Error e) {
-                    warning ("paper-demo: cannot run %s: %s", cmd, e.message);
+        /**
+         * The live settings, in order: each step writes one value and its `at`
+         * line shows the result; a window a step opens shows up by the `settle`
+         * after it. Demo windows carry the app id DEMO_APP (tests/demo-window.py).
+         */
+        private void add_settings_steps () {
+            add ("gap-24", () => settings ()?.set_int ("gap", 24));
+            add ("presets-quarters", () => settings ()?.set_value ("width-presets", new Variant.array (VariantType.DOUBLE, {
+                new Variant.double (0.25), new Variant.double (0.5), new Variant.double (0.75),
+            })));
+            add ("cycle-width", () => this.actions.run ("cycle-width"));
+            add ("cycle-width", () => this.actions.run ("cycle-width"));
+            add ("bad-presets", () => settings ()?.set_value ("width-presets", new Variant.array (VariantType.DOUBLE, {
+                new Variant.double (0.9), new Variant.double (0.1),
+            })));
+            add ("default-width-third", () => {
+                settings ()?.set_double ("default-width", 1.0 / 3.0);
+                open_window ();
+            });
+            add ("settle", () => {});
+            add ("rule-float", () => {
+                var w = focused ();
+                if (w != null) {
+                    message ("paper-demo: app ids gtk=%s sandboxed=%s wm_class=%s",
+                        w.get_gtk_application_id () ?? "-", w.get_sandboxed_app_id () ?? "-", w.get_wm_class () ?? "-");
                 }
+                set_rule (DEMO_APP, true, 0.0, false);
+            });
+            add ("rule-width-full", () => {
+                set_rule (DEMO_APP, false, 1.0, false);
+                open_window ();
+            });
+            add ("settle", () => {});
+            add ("rule-solo", () => set_rule (DEMO_APP, false, 0.0, true));
+            add ("focus-left", () => this.actions.run ("focus-left"));
+            add ("slurp", () => this.actions.run ("slurp"));
+            add ("settle", () => {});
+            add ("rebind", () => {
+                // Lookup first, as Keys does: a missing schema aborts Gala.
+                var source = SettingsSchemaSource.get_default ();
+                if (source == null || source.lookup (KEYS, true) == null) {
+                    warning ("paper-demo: %s is not installed", KEYS);
+                    return;
+                }
+                // Not <Super>h: that is org.gnome.desktop.wm.keybindings minimize,
+                // which then wins. Nothing else binds <Super>j.
+                string[] accels = { "<Super>j" };
+                new Settings (KEYS).set_strv ("focus-left", accels);
+            });
+            for (int i = 0; i < 4; i++) {
+                add ("settle", () => {});
+            }
+        }
+
+        private Settings? settings () {
+            if (c.config.settings == null) {
+                warning ("paper-demo: %s is not installed", Config.SCHEMA);
+            }
+            return c.config.settings;
+        }
+
+        private void set_rule (string app_id, bool float_, double width, bool own_column) {
+            var rule = new AppRule ();
+            rule.app_id = app_id;
+            rule.float_ = float_;
+            rule.width = width;
+            rule.own_column = own_column;
+            var rules = new Gee.ArrayList<AppRule> ();
+            rules.add (rule);
+            settings ()?.set_value ("app-rules", rules_to_variant (rules));
+        }
+
+        /** Run PAPER_DEMO_CMD with the next window number. */
+        private void open_window () {
+            var cmd = Environment.get_variable ("PAPER_DEMO_CMD") ?? "io.elementary.terminal";
+            opened++;
+            try {
+                Process.spawn_command_line_async ("%s %d".printf (cmd, opened));
+            } catch (Error e) {
+                warning ("paper-demo: cannot run %s: %s", cmd, e.message);
+            }
+        }
+
+        public void start () {
+            Timeout.add (400, () => {
+                open_window ();
                 return opened < count ? Source.CONTINUE : Source.REMOVE;
             });
             int waited = 0;
