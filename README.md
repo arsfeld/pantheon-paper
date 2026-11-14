@@ -3,7 +3,9 @@
 PaperWM-style scrolling tiling for Pantheon, as a Gala plugin: each workspace
 on the primary monitor is a horizontal strip of columns that scrolls to follow
 focus. Columns hold one or more stacked windows. Dialogs and other non-normal
-windows float.
+windows float. The focused tiled window has a ring in the accent colour, in
+the gap around it, or just inside its edge where it meets the panel or the
+screen edge.
 
 Built against Gala 8.6 with Mutter 46 (elementary OS 8) or Mutter 48 (NixOS).
 The few calls that differ between them are in `src/Compat.vala`.

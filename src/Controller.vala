@@ -84,6 +84,7 @@ namespace Paper {
         private ulong[] manager_handlers = {};
         private ulong config_handler = 0;
         private Applier applier;
+        private FocusRing ring = new FocusRing ();
         private Settings interface_settings;
         public bool applying { get; private set; default = false; }
         /**
@@ -148,6 +149,7 @@ namespace Paper {
             foreach (var id in windows.keys.to_array ()) {
                 untrack (id);
             }
+            ring.destroy ();
         }
 
         // ---- lookups used by Keys, Mouse, Applier and Demo ----
@@ -435,6 +437,7 @@ namespace Paper {
                     w.move_resize_frame (true, x, f.y, f.width, f.height);
                 }
             }
+            refresh_ring ();
         }
 
         /**
@@ -666,6 +669,7 @@ namespace Paper {
         private void on_focus () {
             var w = display.focus_window;
             if (w == null) {
+                refresh_ring ();
                 return;
             }
             var before = focus.last;
@@ -675,6 +679,7 @@ namespace Paper {
             }
             var s = strip_of (w.get_id ());
             if (s == null) {
+                refresh_ring ();
                 return;
             }
             s.focus (w.get_id ());
@@ -785,6 +790,15 @@ namespace Paper {
                 applier.apply (result, animate && entry.key == active && animations_enabled ());
             }
             applying = false;
+            refresh_ring ();
+        }
+
+        /** The ring goes round the focused window while it is tiled on the visible workspace, and nowhere else. */
+        private void refresh_ring () {
+            var w = display.focus_window;
+            var s = current_strip ();
+            bool tiled = w != null && windows.has_key (w.get_id ()) && s != null && s.contains (w.get_id ());
+            ring.show (tiled ? w : null, ring_width (@params.gap), work_area ());
         }
 
         /**
@@ -823,7 +837,8 @@ namespace Paper {
         /**
          * One line per column of the active strip, for the demo log, then
          * `|| free:` and every other normal window of the active workspace
-         * (floating, or all of them while tiling is off there).
+         * (floating, or all of them while tiling is off there), then `|| ring:`
+         * and where the focus ring is on the stage.
          */
         public string describe () {
             var s = current_strip ();
@@ -853,7 +868,7 @@ namespace Paper {
             if (free.length > 0) {
                 text += " || free: " + string.joinv (" | ", free);
             }
-            return text;
+            return text + " || ring: " + ring.describe ();
         }
 
         private static string frame_text (Meta.Window w, bool focused) {

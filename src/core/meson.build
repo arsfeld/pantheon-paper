@@ -7,4 +7,5 @@ core_sources += files(
     'Drop.vala',
     'Drag.vala',
     'Focus.vala',
+    'Ring.vala',
 )

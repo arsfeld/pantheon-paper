@@ -8,4 +8,5 @@ plugin_sources += files(
     'Mouse.vala',
     'Compat.vala',
     'Bus.vala',
+    'FocusRing.vala',
 )

@@ -24,4 +24,23 @@ namespace Paper {
             (uint8) Math.round (b * 255), (uint8) Math.round (a * 255));
 #endif
     }
+
+    /**
+     * Pantheon's accent colour, 0-1 per channel. Gala's StyleManager holds a
+     * Cogl.Color from Mutter 47 and a Clutter.Color before it; both have uint8
+     * channels, so `var` covers the two. It reads black until AccountsService
+     * answers (and in the headless Gala, always): elementary's blue then.
+     */
+    public void accent_color (out float r, out float g, out float b) {
+        var c = Gala.Drawing.StyleManager.get_instance ().theme_accent_color;
+        if (c.red == 0 && c.green == 0 && c.blue == 0) {
+            r = 0.21f;
+            g = 0.54f;
+            b = 0.90f;
+            return;
+        }
+        r = c.red / 255.0f;
+        g = c.green / 255.0f;
+        b = c.blue / 255.0f;
+    }
 }
