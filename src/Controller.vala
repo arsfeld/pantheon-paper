@@ -270,9 +270,24 @@ namespace Paper {
                 && !w.is_override_redirect () && !w.is_skip_taskbar ();
         }
 
-        /** The last focused normal window, still tracked; null if there is none. */
+        /**
+         * The last focused normal window, still tracked and still normal; null
+         * if there is none. Re-checked here as well as on change: Wingpanel's
+         * window first takes focus as NORMAL and becomes a DOCK later.
+         */
         public Meta.Window? focused_window () {
-            return focus.last == 0 ? null : window_for (focus.last);
+            var w = focus.last == 0 ? null : window_for (focus.last);
+            return w != null && is_normal (w) ? w : null;
+        }
+
+        /** A window that stopped being normal can no longer be the focused one. */
+        private void on_kind_changed (uint64 id) {
+            var w = window_for (id);
+            if (w == null || is_normal (w) || focus.last != id) {
+                return;
+            }
+            focus.forget (id);
+            state_changed ();
         }
 
         /**
@@ -508,6 +523,8 @@ namespace Paper {
             ids.add (w.notify["transient-for"].connect (() => reevaluate (w, Reason.TRANSIENT)));
             ids.add (w.notify["maximized-horizontally"].connect (() => on_maximized (id)));
             ids.add (w.notify["maximized-vertically"].connect (() => on_maximized (id)));
+            ids.add (w.notify["window-type"].connect (() => on_kind_changed (id)));
+            ids.add (w.notify["skip-taskbar"].connect (() => on_kind_changed (id)));
             handlers[id] = ids;
         }
 
