@@ -122,6 +122,16 @@ as focused like any other app.
 A float toggle, from the key or the bus, overrides an app rule both ways: a
 window a rule floats can be tiled, and floated again.
 
+Games float with no rule: an app id of `steam_app_<id>` (Proton under X11, and
+games Steam starts in its runtime), `<name>.exe` (Wine's Wayland driver) or
+`gamescope`. A game sizes its window itself and answers a column's size by
+resizing back, so tiling one made it jump between the two sizes. An app rule
+for the id still wins, so a game can be tiled on purpose. Any other window that
+takes the size it is given and then resizes itself back three times within
+10 s is floated too (`FightGuard`, logged as `floating … it keeps resizing
+itself away from its column`); a window that only ever answers with its own
+size (size increments, a minimum) never counts.
+
 ## Build and test
 
 ```

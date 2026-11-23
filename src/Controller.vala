@@ -82,6 +82,9 @@ namespace Paper {
         private Gee.HashMap<uint64?, Rect?> asked_size = new Gee.HashMap<uint64?, Rect?> (id_hash, id_equal);
         private const int64 RESIZE_GRACE = 1000000;
         private uint recheck_source = 0;
+        /** Windows that kept resizing themselves against their column (FightGuard), floated since. */
+        private FightGuard fights = new FightGuard ();
+        private Gee.HashSet<uint64?> fighters = new Gee.HashSet<uint64?> (id_hash, id_equal);
         private Gee.ArrayList<ulong> display_handlers = new Gee.ArrayList<ulong> ();
         private ulong[] manager_handlers = {};
         private ulong config_handler = 0;
@@ -273,10 +276,20 @@ namespace Paper {
             return rule != null && rule.own_column;
         }
 
-        /** Whether a rule floats the window, before the user's toggle. */
+        /**
+         * Whether a rule floats the window, before the user's toggle: a window
+         * caught fighting its column, else its app rule, else whether it is a
+         * game (is_game_class), so games float with no rule written for them.
+         */
         private bool rule_floats (Meta.Window w) {
+            if (fighters.contains (w.get_id ())) {
+                return true;
+            }
             var rule = rule_for (w);
-            return rule != null && rule.float_;
+            if (rule != null) {
+                return rule.float_;
+            }
+            return is_game_class (w.get_wm_class ());
         }
 
         /** The effective state: the user's toggle, or else the window's rule. */
@@ -656,6 +669,8 @@ namespace Paper {
             handlers.unset (id);
             drop_first_frame (id, w);
             floats.forget (id);
+            fights.forget (id);
+            fighters.remove (id);
             var had_focus = focus.last == id;
             focus.forget (id);
             adopted.remove (id);
@@ -826,6 +841,25 @@ namespace Paper {
             if (w == null) {
                 return;
             }
+            if (strip_of (id) != null && asked_size.has_key (id)) {
+                var f = w.get_frame_rect ();
+                var a = asked_size[id];
+                bool matches = f.width == a.width && f.height == a.height;
+                if (fights.resized (id, matches, GLib.get_monotonic_time ())) {
+                    fighters.add (id);
+                    message ("floating %s: it keeps resizing itself away from its column", window_text (w));
+                    // Not from inside a relayout (`applying`), whose loop this
+                    // signal may have come from.
+                    Idle.add (() => {
+                        var still = window_for (id);
+                        if (still != null) {
+                            reevaluate (still, Reason.FLOAT);
+                        }
+                        return Source.REMOVE;
+                    });
+                    return;
+                }
+            }
             if (applying) {
                 return;
             }
@@ -936,6 +970,7 @@ namespace Paper {
             debug ("resize request %s", ((uint64) id).to_string ());
             asked_size[id] = Rect (0, 0, width, height);
             asked_at[id] = GLib.get_monotonic_time ();
+            fights.asked (id);
             if (requested.has_key (id)) {
                 asked_width[id] = requested[id];
             }

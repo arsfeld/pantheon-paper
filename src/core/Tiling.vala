@@ -64,3 +64,73 @@ namespace Paper {
         }
     }
 }
+
+namespace Paper {
+    /**
+     * Whether a WM_CLASS is a game's, which floats unless an app rule says
+     * otherwise. Every Proton title on X11, and every game Steam starts under
+     * its runtime, is `steam_app_<appid>`; under Wine's Wayland driver
+     * (PROTON_ENABLE_WAYLAND) the app id is the executable, `<name>.exe`;
+     * gamescope nests a whole game in one window. A game draws at a size and aspect it picks itself and answers a
+     * column's size by resizing back, so tiling one makes it jump between the
+     * two sizes, and a fullscreen game that loses focus over it minimizes.
+     */
+    public bool is_game_class (string? wm_class) {
+        if (wm_class == null) {
+            return false;
+        }
+        var c = wm_class.ascii_down ();
+        return c.has_prefix ("steam_app_") || c.has_suffix (".exe") || c == "gamescope";
+    }
+
+    /**
+     * Notices a tiled window fighting the layout: one that took the size it was
+     * asked for and then, unasked, changed it again (a game keeping its aspect,
+     * a player restoring its video size). A window that only ever answers with
+     * its own size (size increments, a minimum) never took the asked size, so
+     * it settles through Controller.size_settled and is never counted here.
+     * `FIGHTS` reverts within `WINDOW_US` float the window, for any app, game
+     * or not, that the class check misses.
+     */
+    public class FightGuard : Object {
+        public const int FIGHTS = 3;
+        public const int64 WINDOW_US = 10000000;
+
+        private Gee.HashMap<uint64?, Gee.ArrayList<int64?>> reverts =
+            new Gee.HashMap<uint64?, Gee.ArrayList<int64?>> (id_hash, id_equal);
+        private Gee.HashSet<uint64?> took = new Gee.HashSet<uint64?> (id_hash, id_equal);
+
+        /** A new size was asked of the window: whether it takes it is a fresh question. */
+        public void asked (uint64 id) {
+            took.remove (id);
+        }
+
+        /**
+         * The window's frame changed by itself to `matches` (whether it is the
+         * size last asked) at `now`. True when that makes it a fighter.
+         */
+        public bool resized (uint64 id, bool matches, int64 now) {
+            if (matches) {
+                took.add (id);
+                return false;
+            }
+            if (!took.remove (id)) {
+                return false;
+            }
+            if (!reverts.has_key (id)) {
+                reverts[id] = new Gee.ArrayList<int64?> ();
+            }
+            var times = reverts[id];
+            times.add (now);
+            while (times.size > 0 && now - times[0] > WINDOW_US) {
+                times.remove_at (0);
+            }
+            return times.size >= FIGHTS;
+        }
+
+        public void forget (uint64 id) {
+            reverts.unset (id);
+            took.remove (id);
+        }
+    }
+}
